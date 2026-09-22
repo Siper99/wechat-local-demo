@@ -263,27 +263,26 @@ struct SwipeActionRow<Content: View>: View {
             .offset(x: offset)
             .background(alignment: .trailing) { if offset < -1 { buttons } }
             .clipped()
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 14)
-                    .onChanged { value in
-                        dragging = true
-                        guard abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
-                        let target = min(max(baseOffset + value.translation.width, -revealWidth - 30), 0)
-                        drag = target - baseOffset
-                    }
-                    .onEnded { value in
-                        dragging = false
-                        lastDragEnd = Date()
-                        guard drag != 0 else { return }
-                        let final = baseOffset + drag + value.predictedEndTranslation.width * 0.2
-                        withAnimation(.snappy(duration: 0.25)) {
-                            if final < -revealWidth / 2 { openID = id } else if isOpen { openID = nil }
-                            drag = 0
-                            confirming = nil
-                        }
-                    }
-            )
+            .modifier(HorizontalSwipe(allowRight: isOpen, onChanged: changed, onEnded: ended))
             .onChange(of: openID) { _, _ in if !isOpen { confirming = nil } }
+    }
+
+    private func changed(_ translation: CGFloat) {
+        dragging = true
+        let target = min(max(baseOffset + translation, -revealWidth - 30), 0)
+        drag = target - baseOffset
+    }
+
+    private func ended(_ translation: CGFloat, _ velocity: CGFloat) {
+        dragging = false
+        lastDragEnd = Date()
+        guard drag != 0 else { return }
+        let final = baseOffset + drag + velocity * 0.1
+        withAnimation(.snappy(duration: 0.25)) {
+            if final < -revealWidth / 2 { openID = id } else if isOpen { openID = nil }
+            drag = 0
+            confirming = nil
+        }
     }
 
     private var buttons: some View {
@@ -315,5 +314,78 @@ struct SwipeActionRow<Content: View>: View {
         .padding(.vertical, 8)
         .padding(.trailing, Self.gap)
         .frame(width: revealWidth, alignment: .trailing)
+    }
+}
+
+/// 横向拖动：iOS 18 起用 UIKit 手势（只在横向时开始，并让滚动视图等待它失败），
+/// 避免 ScrollView 抢走拖动；iOS 17 使用 SwiftUI DragGesture。
+private struct HorizontalSwipe: ViewModifier {
+    var allowRight: Bool
+    var onChanged: (CGFloat) -> Void
+    var onEnded: (CGFloat, CGFloat) -> Void
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.gesture(HorizontalPanGesture(allowRight: allowRight, onChanged: onChanged, onEnded: onEnded))
+        } else {
+            content.simultaneousGesture(
+                DragGesture(minimumDistance: 14)
+                    .onChanged { value in
+                        guard abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
+                        onChanged(value.translation.width)
+                    }
+                    .onEnded { value in
+                        onEnded(value.translation.width, value.velocity.width)
+                    }
+            )
+        }
+    }
+}
+
+@available(iOS 18.0, *)
+private struct HorizontalPanGesture: UIGestureRecognizerRepresentable {
+    var allowRight: Bool
+    var onChanged: (CGFloat) -> Void
+    var onEnded: (CGFloat, CGFloat) -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let recognizer = UIPanGestureRecognizer()
+        recognizer.delegate = context.coordinator
+        return recognizer
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        context.coordinator.allowRight = allowRight
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        let translation = recognizer.translation(in: recognizer.view).x
+        switch recognizer.state {
+        case .began, .changed:
+            onChanged(translation)
+        case .ended, .cancelled, .failed:
+            onEnded(translation, recognizer.velocity(in: recognizer.view).x)
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var allowRight = false
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
+            let velocity = pan.velocity(in: pan.view)
+            guard abs(velocity.x) > abs(velocity.y) * 1.2 else { return false }
+            return velocity.x < 0 || allowRight
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                               shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            otherGestureRecognizer is UIPanGestureRecognizer && otherGestureRecognizer.view is UIScrollView
+        }
     }
 }
