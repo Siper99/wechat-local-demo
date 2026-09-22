@@ -82,7 +82,7 @@ struct MeView: View {
             }
             .padding(.bottom, 24)
         }
-        .background(Color.chatBackground)
+        .background(Color.chatBackground, ignoresSafeAreaEdges: .bottom)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showProfile) { if let me { ContactEditView(contact: me) } }
         .confirmationDialog("设置状态", isPresented: $showStatus, titleVisibility: .visible) {

@@ -40,7 +40,6 @@ struct ContactsView: View {
                         .padding(.horizontal, 16)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .frame(height: 24)
-                        .environment(\.defaultMinListRowHeight, 24)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.chatBackground)
                         .listRowSeparator(.hidden)
@@ -76,7 +75,7 @@ struct ContactsView: View {
             .listStyle(.plain)
             .navigationTitle("通讯录")
             .weChatNavigation()
-            .environment(\.defaultMinListRowHeight, 54)
+            .environment(\.defaultMinListRowHeight, 0)
             .scrollDismissesKeyboard(.interactively)
             .overlay(alignment: .trailing) {
                 VStack(spacing: 4) {
