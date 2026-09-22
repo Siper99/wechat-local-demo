@@ -26,7 +26,7 @@ struct RootView: View {
     var body: some View {
         TabView {
             ConversationListView()
-                .tabItem { Label("微信", systemImage: "bubble.left.and.bubble.right.fill") }
+                .tabItem { Label("WeChat", systemImage: "bubble.left.and.bubble.right.fill") }
                 .badge(unreadTotal)
             ContactsView()
                 .tabItem { Label("通讯录", systemImage: "person.2.fill") }

@@ -1,6 +1,6 @@
-# 微信 · 本地仿真项目
+# WeChat · 本地仿真项目
 
-原项目名 QingLiao；桌面名称、聊天首页和底部标签已改为“微信”，并添加微信图标。原生 SwiftUI + SwiftData，最低 iOS 17，本地运行，不需要服务器或登录。
+原项目名 QingLiao；桌面名称、聊天首页和底部标签为“WeChat”，保留微信图标。1.0.1（构建 2）将安装名称改为英文，兼容 SideStore 注册 App ID 时的名称校验。原生 SwiftUI + SwiftData，最低 iOS 17，本地运行，不需要服务器或登录。
 
 这是独立的演示应用，不连接腾讯微信服务。“我 → 设置”可查看功能范围。使用独立应用标识，可以与官方微信同时安装，数据各自独立。
 
@@ -15,7 +15,7 @@
 - `project-personal.yml`：个人安装版，不含 App Groups 和分享扩展，支持文字粘贴与相册选图。
 - `project.yml`：包含系统分享扩展的完整配置，需要对应签名能力。
 
-**首次云端编译已成功并生成 IPA，尚未完成真机签名安装验证。** 打开 [成功构建与 IPA 下载](https://github.com/Siper99/wechat-local-demo/actions/runs/35696780434)，在 Artifacts 下载 `WeChat-Simulator-unsigned`；解压后用 AltStore Classic 签名安装。
+打开 [构建与 IPA 下载](https://github.com/Siper99/wechat-local-demo/actions/workflows/build-ios.yml)，选择最新成功构建，在 Artifacts 下载 `WeChat-Simulator-unsigned`。解压后用 SideStore 或 AltStore Classic 签名安装。新版应显示 `WeChat`、版本 `1.0.1`；旧中文名称安装包会触发部分 SideStore 版本的 `appIdName` 错误。尚未完成真机签名安装验证。
 
 ## 仿真功能
 

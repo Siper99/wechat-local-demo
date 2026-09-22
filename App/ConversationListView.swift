@@ -52,7 +52,7 @@ struct ConversationListView: View {
                                            description: Text("点右上角 ＋ 发起聊天"))
                 }
             }
-            .navigationTitle("微信")
+            .navigationTitle("WeChat")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: Conversation.self) { ChatView(conversation: $0) }
             .toolbar {

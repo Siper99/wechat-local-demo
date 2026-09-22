@@ -29,4 +29,4 @@ mkdir -p "$work_dir/package/Payload"
 ditto "$app_path" "$work_dir/package/Payload/QingLiao.app"
 (cd "$work_dir/package" && /usr/bin/zip -qry "$work_dir/WeChat-Simulator-unsigned.ipa" Payload)
 cp "$work_dir/WeChat-Simulator-unsigned.ipa" build/WeChat-Simulator-unsigned.ipa
-echo "Created build/WeChat-Simulator-unsigned.ipa — sign and install with AltStore Classic."
+echo "Created build/WeChat-Simulator-unsigned.ipa — sign and install with SideStore or AltStore Classic."

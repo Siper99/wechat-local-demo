@@ -8,9 +8,17 @@ GitHub Actions 的 macOS 环境编译，Windows 的 AltServer 和 iPhone 的 Alt
 
 免费账号签名 7 天后过期，需要刷新；同一设备最多安装 3 个此类个人签名应用，AltStore 也占用名额。参见 [Apple Personal Team 说明](https://developer.apple.com/help/account/basics/about-your-developer-account) 和 [AltStore 使用说明](https://faq.altstore.io/altstore-classic/your-altstore)。
 
+## 已安装 SideStore：直接安装新版
+
+1. 从下面的构建页面下载最新成功构建的 Artifacts，解压得到 IPA，保存到 iPhone 的“文件”App。
+2. 在你已配置好的 SideStore 中点 My Apps 左上角的 ＋，选择新版 IPA 重新安装；连接条件沿用你当前的 SideStore 配置。
+3. 本次版本为 1.0.1（构建 2），安装名称是 `WeChat`，微信图标不变。不要再次选择旧的中文名称 IPA。
+
+旧版报错 `An invalid value '微信' was provided for the parameter 'appIdName'`，与 SideStore 的[中文名称兼容问题](https://github.com/SideStore/SideStore/issues/1489)一致。新版把 IPA 内部的 `CFBundleDisplayName` 改为英文；只改 IPA 文件名没有作用。
+
 ## 1. 生成 IPA
 
-本项目已上传到 [私有仓库](https://github.com/Siper99/wechat-local-demo)，并已完成 [首次成功构建](https://github.com/Siper99/wechat-local-demo/actions/runs/35696780434)。你可以直接进入该构建页面下载 Artifacts，再从第 2 节开始。下面保留重新构建步骤。
+本项目已上传到 [私有仓库](https://github.com/Siper99/wechat-local-demo)。打开 [构建页面](https://github.com/Siper99/wechat-local-demo/actions/workflows/build-ios.yml)，选择最新成功构建并下载 Artifacts。已有 SideStore 的用户按上面的步骤安装；尚未安装签名工具的用户可从第 2 节开始。下面保留重新构建步骤。
 
 1. 登录 GitHub，新建一个 **Private 私有仓库**，例如 `wechat-local-demo`。
 2. 上传项目内容。仓库根目录应直接出现 `project-personal.yml`、`App`、`Shared`、`scripts` 和 `.github`，不要多套一层 QingLiao 文件夹，也不要只上传 ZIP。
@@ -38,7 +46,7 @@ Apple 账号用于本机签名，不要填进源码、GitHub 或聊天消息。
 1. 将 IPA 传到 iPhone“文件”App，例如通过 iCloud Drive。
 2. 保持 AltServer 运行，手机连接数据线，或与电脑保持可互通的同一 Wi-Fi。
 3. 打开 iPhone 的 AltStore Classic，进入 **My Apps → ＋**，选择 IPA，等待签名安装。
-4. 桌面会出现名为“微信”的应用，使用微信图标。建议放进单独文件夹，便于与官方应用区分。
+4. 桌面会出现名为“WeChat”的应用，使用微信图标。建议放进单独文件夹，便于与官方应用区分。
 5. 打开“我 → 设置”，应看到“本地聊天仿真 / 个人版”。开启编辑模式，进入聊天即可切换双方身份和编辑消息。
 
 应用有独立 Bundle ID，不替换官方微信，也不会自动获取官方微信账号和聊天数据库。
