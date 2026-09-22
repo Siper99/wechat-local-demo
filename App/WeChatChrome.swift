@@ -272,11 +272,6 @@ struct SwipeActionRow<Content: View>: View {
                     }
             )
             .onChange(of: openID) { _, _ in if !isOpen { confirming = nil } }
-            .accessibilityActions {
-                ForEach(actions.indices, id: \.self) { index in
-                    Button(actions[index].title) { actions[index].action() }
-                }
-            }
     }
 
     private var buttons: some View {

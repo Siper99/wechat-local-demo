@@ -46,7 +46,6 @@ struct ConversationListView: View {
                                     if swipedID != nil { withAnimation(.snappy) { swipedID = nil } }
                                     else { onOpen(conversation) }
                                 }
-                                .accessibilityAddTraits(.isButton)
                         }
                         .accessibilityIdentifier("conversation.\(conversation.title)")
                         .contextMenu {
