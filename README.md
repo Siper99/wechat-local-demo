@@ -1,6 +1,6 @@
 # WeChat · 本地仿真项目
 
-原项目名 QingLiao；桌面名称保持“WeChat”以兼容 SideStore，应用内首页和底部标签为“微信”，保留微信图标。当前版本 1.2.0（构建 4）按实机截图细化四个主页和聊天页，新增位置消息和文件传输助手。原生 SwiftUI + SwiftData，最低 iOS 17，本地运行，不需要服务器或登录。
+原项目名 QingLiao；桌面名称保持“WeChat”以兼容 SideStore，应用内首页和底部标签为“微信”，保留微信图标。当前版本 1.3.0（构建 5）在实机截图基础上跟进 2026 年 iOS 微信 8.0.75–8.0.78 的界面改动（圆角左滑菜单、新语音输入框、白底半屏选图、好友资料页编辑按钮），并含位置消息和文件传输助手。原生 SwiftUI + SwiftData，最低 iOS 17，本地运行，不需要服务器或登录。
 
 这是独立的演示应用，不连接腾讯微信服务。“我 → 设置”可查看功能范围。使用独立应用标识，可以与官方微信同时安装，数据各自独立。
 
@@ -15,13 +15,13 @@
 - `project-personal.yml`：个人安装版，不含 App Groups 和分享扩展，支持文字粘贴与相册选图。
 - `project.yml`：包含系统分享扩展的完整配置，需要对应签名能力。
 
-打开 [构建与 IPA 下载](https://github.com/Siper99/wechat-local-demo/actions/workflows/build-ios.yml)，选择最新成功构建，在 Artifacts 下载 `WeChat-Simulator-unsigned`。解压后用 SideStore 或 AltStore Classic 签名安装。新版应显示 `WeChat`、版本 `1.2.0`；旧中文名称安装包会触发部分 SideStore 版本的 `appIdName` 错误。尚未完成真机签名安装验证。
+打开 [构建与 IPA 下载](https://github.com/Siper99/wechat-local-demo/actions/workflows/build-ios.yml)，选择最新成功构建，在 Artifacts 下载 `WeChat-Simulator-unsigned`。解压后用 SideStore 或 AltStore Classic 签名安装。新版应显示 `WeChat`、版本 `1.3.0`；旧中文名称安装包会触发部分 SideStore 版本的 `appIdName` 错误。尚未完成真机签名安装验证。
 
 ## 仿真功能
 
 | 模块 | 当前状态 |
 |---|---|
-| 聊天列表 | 搜索联系人和消息、草稿恢复、置顶、免打扰、未读、删除、标为未读 |
+| 聊天列表 | 搜索联系人和消息、草稿恢复、置顶（长按）、免打扰、未读；左滑圆角“标为未读 / 删除”，删除需再点“确认删除” |
 | 聊天 | 文字、相册和相机发图、位置（地图卡片，点开系统地图）、看大图、双击文字全文、表情、时间分隔 |
 | 编辑模式 | 在“我 → 设置”开启，切换双方身份，改内容、时间和发送方，模拟延迟回复 |
 | 消息菜单 | 复制、转发、引用、收藏、多选删除、撤回；编辑模式另有修改消息和发送方 |

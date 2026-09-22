@@ -123,4 +123,38 @@ final class ChatFlowTests: XCTestCase {
         app.buttons["nav.back"].tap()
         XCTAssertTrue(app.buttons["tab.0"].waitForExistence(timeout: 3))
     }
+
+    func testSwipeActionsPhotoSheetVoiceAndProfile() {
+        // 会话左滑：圆角“标为未读 / 删除”，删除需确认
+        app.staticTexts["妈妈"].swipeLeft()
+        XCTAssertTrue(app.buttons["标为未读"].waitForExistence(timeout: 3))
+        capture("14-swipe-actions")
+        app.buttons["删除"].tap()
+        XCTAssertTrue(app.buttons["确认删除"].waitForExistence(timeout: 3))
+        app.buttons["确认删除"].tap()
+        XCTAssertFalse(app.staticTexts["妈妈"].waitForExistence(timeout: 2))
+
+        // 白底半屏选图
+        app.staticTexts["林小雨"].tap()
+        XCTAssertTrue(app.buttons["更多功能"].waitForExistence(timeout: 5))
+        app.buttons["更多功能"].tap()
+        app.buttons["相册"].tap()
+        XCTAssertTrue(app.buttons["photos.send"].waitForExistence(timeout: 5))
+        capture("15-photo-sheet")
+        app.buttons["取消"].tap()
+
+        // 语音输入样式
+        app.buttons["切换语音"].tap()
+        XCTAssertTrue(app.buttons["语音转文字"].waitForExistence(timeout: 3))
+        capture("16-voice-input")
+        app.buttons["nav.back"].tap()
+
+        // 好友资料页
+        app.buttons["tab.1"].tap()
+        app.staticTexts["阿杰"].tap()
+        XCTAssertTrue(app.buttons["contact.edit"].waitForExistence(timeout: 3))
+        capture("17-contact-profile")
+        app.buttons["contact.sendMessage"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "chat.input").firstMatch.waitForExistence(timeout: 5))
+    }
 }

@@ -137,44 +137,111 @@ struct ContactsView: View {
 struct ContactDetailView: View {
     @Bindable var contact: Contact
     @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
     @State private var openChat: Conversation?
     @State private var showEdit = false
+    @State private var showMore = false
+    @State private var confirmDelete = false
+    @State private var feature: String?
 
     var body: some View {
-        List {
-            Section {
-                HStack(spacing: 16) {
-                    AvatarView(contact: contact, size: 64)
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(contact.name).font(.system(size: 22, weight: .semibold))
-                        Text("微信号：\(contact.handle)")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.secondary)
+        ScrollView {
+            VStack(spacing: 8) {
+                header
+                WeChatGroup {
+                    Button { showEdit = true } label: { WeChatRow(title: "备注和标签", plain: true) }
+                        .buttonStyle(.plain)
+                    WeChatSeparator(leading: 16)
+                    Button { feature = "朋友权限" } label: { WeChatRow(title: "朋友权限", plain: true) }
+                        .buttonStyle(.plain)
+                }
+                WeChatGroup {
+                    Button { feature = "朋友圈" } label: { WeChatRow(title: "朋友圈", plain: true) }
+                        .buttonStyle(.plain)
+                    WeChatSeparator(leading: 16)
+                    Button { feature = "更多信息" } label: { WeChatRow(title: "更多信息", plain: true) }
+                        .buttonStyle(.plain)
+                }
+                WeChatGroup {
+                    Button {
+                        openChat = context.conversation(with: contact)
+                    } label: {
+                        actionLabel("发消息", "message")
                     }
-                }
-                .padding(.vertical, 8)
-            }
-            Section {
-                IconRow(icon: "photo.on.rectangle", color: .blue, title: "朋友圈")
-                IconRow(icon: "info.circle.fill", color: .gray, title: "更多信息")
-            }
-            Section {
-                Button {
-                    openChat = context.conversation(with: contact)
-                } label: {
-                    Label("发消息", systemImage: "message")
-                        .font(.system(size: 17, weight: .medium))
-                        .frame(maxWidth: .infinity)
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("contact.sendMessage")
+                    WeChatSeparator(leading: 0)
+                    Button { feature = "音视频通话" } label: { actionLabel("音视频通话", "video") }
+                        .buttonStyle(.plain)
                 }
             }
+            .padding(.bottom, 24)
         }
+        .background(Color.chatBackground)
         .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
+        .weChatNavigation()
         .navigationDestination(item: $openChat) { ChatView(conversation: $0) }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) { Button("编辑") { showEdit = true } }
+            // 新版微信：资料页右上角新增“编辑”按钮，直达备注
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button { showEdit = true } label: { Image(systemName: "square.and.pencil") }
+                    .accessibilityLabel("编辑")
+                    .accessibilityIdentifier("contact.edit")
+                Button { showMore = true } label: { Image(systemName: "ellipsis") }
+                    .accessibilityLabel("更多")
+            }
         }
         .sheet(isPresented: $showEdit) { ContactEditView(contact: contact) }
+        .confirmationDialog("", isPresented: $showMore) {
+            Button("设置备注和标签") { showEdit = true }
+            Button("删除联系人", role: .destructive) { confirmDelete = true }
+        }
+        .confirmationDialog("将联系人“\(contact.name)”删除，同时删除与该联系人的聊天记录", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("删除联系人", role: .destructive) {
+                dismiss()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    context.delete(contact)
+                    try? context.save()
+                }
+            }
+        }
+        .alert(feature ?? "", isPresented: Binding(get: { feature != nil }, set: { if !$0 { feature = nil } })) {
+            Button("知道了", role: .cancel) { }
+        } message: { Text("此入口暂未接入。") }
+    }
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: 16) {
+            AvatarView(contact: contact, size: 64)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(contact.name)
+                    .font(.system(size: 22, weight: .semibold))
+                    .lineLimit(1)
+                Text("微信号：\(contact.handle)")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+                Text("地区：未设置")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 16)
+        .padding(.bottom, 32)
+        .background(Color(.systemBackground))
+    }
+
+    private func actionLabel(_ title: String, _ symbol: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol).font(.system(size: 17))
+            Text(title).font(.system(size: 17, weight: .medium))
+        }
+        .foregroundStyle(Color.linkBlue)
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
+        .background(Color(.systemBackground))
+        .contentShape(Rectangle())
     }
 }
 

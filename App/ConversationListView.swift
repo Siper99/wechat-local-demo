@@ -11,6 +11,7 @@ struct ConversationListView: View {
     @State private var showAddContact = false
     @State private var featureNotice: String?
     @AppStorage("desktopLogin") private var desktopLogin = "Windows"
+    @State private var swipedID: UUID?
 
     private var unreadTotal: Int {
         conversations.filter { !$0.muted }.reduce(0) { $0 + $1.unread }
@@ -28,66 +29,43 @@ struct ConversationListView: View {
 
     var body: some View {
         Group {
-            List {
-                WeChatSearchBar(text: $search)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                if !desktopLogin.isEmpty && search.isEmpty {
-                    Button { featureNotice = "\(desktopLogin) 微信已登录" } label: {
-                        HStack(spacing: 0) {
-                            Image(systemName: desktopLogin == "Mac" ? "laptopcomputer" : "desktopcomputer")
-                                .font(.system(size: 21, weight: .light))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 48)
-                            Text("\(desktopLogin) 微信已登录")
-                                .font(.system(size: 15))
-                                .foregroundStyle(.secondary)
-                                .padding(.leading, 12)
-                            Spacer()
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    WeChatSearchBar(text: $search)
+                    if !desktopLogin.isEmpty && search.isEmpty { desktopLoginRow }
+                    ForEach(sorted) { conversation in
+                        SwipeActionRow(id: conversation.id, openID: $swipedID, actions: swipeActions(for: conversation)) {
+                            ConversationRow(conversation: conversation)
+                                .padding(.horizontal, 16)
+                                .background(conversation.pinned ? Color.pinnedRow : Color(.systemBackground))
+                                .overlay(alignment: .bottom) {
+                                    Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 0.5).padding(.leading, 76)
+                                }
+                                // 用点按手势而非 Button：横向拖动后松手不会误打开聊天
+                                .onTapGesture {
+                                    if swipedID != nil { withAnimation(.snappy) { swipedID = nil } }
+                                    else { onOpen(conversation) }
+                                }
+                                .accessibilityAddTraits(.isButton)
                         }
-                        .padding(.horizontal, 16)
-                        .frame(height: 56)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("chats.desktopLogin")
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.chatBackground)
-                    .listRowSeparator(.hidden)
-                }
-                ForEach(sorted) { conversation in
-                    ZStack {
-                        // 隐藏 NavigationLink 自带的箭头
-                        NavigationLink(value: conversation) { EmptyView() }.opacity(0)
-                        ConversationRow(conversation: conversation)
-                    }
-                    .accessibilityIdentifier("conversation.\(conversation.title)")
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                    .listRowBackground(conversation.pinned ? Color.pinnedRow : Color(.systemBackground))
-                    .swipeActions(edge: .trailing) {
-                        Button("删除", role: .destructive) {
-                            context.delete(conversation)
-                            try? context.save()
+                        .accessibilityIdentifier("conversation.\(conversation.title)")
+                        .contextMenu {
+                            Button(conversation.pinned ? "取消置顶" : "置顶聊天", systemImage: "pin") { conversation.pinned.toggle() }
+                            Button(conversation.unread > 0 ? "标为已读" : "标为未读", systemImage: "message.badge") {
+                                conversation.unread = conversation.unread > 0 ? 0 : 1
+                            }
+                            Button("聊天信息", systemImage: "info.circle") { editing = conversation }
+                            Button("删除该聊天", systemImage: "trash", role: .destructive) { delete(conversation) }
                         }
-                        Button(conversation.unread > 0 ? "标为已读" : "标为未读") {
-                            conversation.unread = conversation.unread > 0 ? 0 : 1
-                        }
-                        .tint(.blue)
-                    }
-                    .swipeActions(edge: .leading) {
-                        Button(conversation.pinned ? "取消置顶" : "置顶") { conversation.pinned.toggle() }
-                            .tint(.gray)
-                    }
-                    .contextMenu {
-                        Button("聊天信息", systemImage: "info.circle") { editing = conversation }
                     }
                 }
+                .background(Color(.systemBackground))
             }
-            .listStyle(.plain)
             .scrollDismissesKeyboard(.interactively)
-            .environment(\.defaultMinListRowHeight, 0)
-            .scrollContentBackground(.hidden)
-            .background(Color(.systemBackground))
+            .background {
+                // 顶部下拉露出灰色，底部空白为白色
+                VStack(spacing: 0) { Color.chatBackground; Color(.systemBackground) }
+            }
             .overlay {
                 if sorted.isEmpty {
                     ContentUnavailableView(search.isEmpty ? "暂无聊天" : "无搜索结果", systemImage: "bubble.left.and.bubble.right",
@@ -129,6 +107,47 @@ struct ConversationListView: View {
                 Button("知道了", role: .cancel) { }
             } message: { Text("当前为本地聊天演示，此功能尚未接入。") }
         }
+    }
+}
+
+extension ConversationListView {
+    private var desktopLoginRow: some View {
+        Button { featureNotice = "\(desktopLogin) 微信已登录" } label: {
+            HStack(spacing: 0) {
+                Image(systemName: desktopLogin == "Mac" ? "laptopcomputer" : "desktopcomputer")
+                    .font(.system(size: 21, weight: .light))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 48)
+                Text("\(desktopLogin) 微信已登录")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 12)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 56)
+            .background(Color.chatBackground)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("chats.desktopLogin")
+    }
+
+    /// 左滑：标为未读 / 删除（删除需再点一次“确认删除”）
+    private func swipeActions(for conversation: Conversation) -> [SwipeAction] {
+        [
+            SwipeAction(title: conversation.unread > 0 ? "标为已读" : "标为未读", color: Color(UIColor(hex: 0x2782D7))) {
+                conversation.unread = conversation.unread > 0 ? 0 : 1
+            },
+            SwipeAction(title: "删除", color: Color(UIColor(hex: 0xFA5151)), confirmTitle: "确认删除") {
+                delete(conversation)
+            },
+        ]
+    }
+
+    private func delete(_ conversation: Conversation) {
+        context.delete(conversation)
+        try? context.save()
     }
 }
 

@@ -107,9 +107,12 @@ struct WeChatRow: View {
     var detail: String? = nil
     var chevron = true
     var asset: String? = nil
+    /// 不显示左侧图标（如好友资料页）
+    var plain = false
 
     private var resource: String? {
-        asset ?? ["朋友圈": "discover_moment", "扫一扫": "discover_qrcode", "看一看": "discover_see",
+        if plain { return nil }
+        return asset ?? ["朋友圈": "discover_moment", "扫一扫": "discover_qrcode", "看一看": "discover_see",
                   "搜一搜": "discover_search", "附近的人": "discover_nearby",
                   "游戏": "discover_game", "小程序": "discover_miniprogram", "服务": "me_pay",
                   "收藏": "me_favorite", "表情": "me_emoji", "设置": "me_setting"][title]
@@ -117,7 +120,9 @@ struct WeChatRow: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            if let resource {
+            if plain {
+                EmptyView()
+            } else if let resource {
                 Image(resource).resizable().scaledToFit().frame(width: 24, height: 26)
             } else if let icon {
                 Image(systemName: icon)
@@ -216,5 +221,92 @@ struct WeChatBackButton: View {
         }
         .accessibilityLabel(unread > 0 ? "返回，\(unread) 条未读" : "返回")
         .accessibilityIdentifier("nav.back")
+    }
+}
+
+// MARK: - 左滑操作（新版微信：圆角按钮，删除需二次确认）
+
+struct SwipeAction {
+    let title: String
+    let color: Color
+    var confirmTitle: String? = nil
+    let action: () -> Void
+}
+
+struct SwipeActionRow<Content: View>: View {
+    let id: UUID
+    @Binding var openID: UUID?
+    let actions: [SwipeAction]
+    @ViewBuilder var content: Content
+
+    @State private var drag: CGFloat = 0
+    @State private var confirming: Int?
+
+    private static var buttonWidth: CGFloat { 76 }
+    private static var gap: CGFloat { 6 }
+    private var revealWidth: CGFloat { CGFloat(actions.count) * (Self.buttonWidth + Self.gap) + Self.gap }
+    private var isOpen: Bool { openID == id }
+    private var baseOffset: CGFloat { isOpen ? -revealWidth : 0 }
+    private var offset: CGFloat { baseOffset + drag }
+
+    var body: some View {
+        content
+            .offset(x: offset)
+            .background(alignment: .trailing) { if offset < -1 { buttons } }
+            .clipped()
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 14)
+                    .onChanged { value in
+                        guard abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
+                        let target = min(max(baseOffset + value.translation.width, -revealWidth - 30), 0)
+                        drag = target - baseOffset
+                    }
+                    .onEnded { value in
+                        guard drag != 0 else { return }
+                        let final = baseOffset + drag + value.predictedEndTranslation.width * 0.2
+                        withAnimation(.snappy(duration: 0.25)) {
+                            if final < -revealWidth / 2 { openID = id } else if isOpen { openID = nil }
+                            drag = 0
+                            confirming = nil
+                        }
+                    }
+            )
+            .onChange(of: openID) { _, _ in if !isOpen { confirming = nil } }
+            .accessibilityActions {
+                ForEach(actions.indices, id: \.self) { index in
+                    Button(actions[index].title) { actions[index].action() }
+                }
+            }
+    }
+
+    private var buttons: some View {
+        HStack(spacing: Self.gap) {
+            ForEach(actions.indices, id: \.self) { index in
+                if confirming == nil || confirming == index {
+                    let item = actions[index]
+                    Button {
+                        if let _ = item.confirmTitle, confirming != index {
+                            withAnimation(.snappy(duration: 0.2)) { confirming = index }
+                        } else {
+                            withAnimation(.snappy(duration: 0.25)) { openID = nil }
+                            confirming = nil
+                            item.action()
+                        }
+                    } label: {
+                        Text(confirming == index ? (item.confirmTitle ?? item.title) : item.title)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(item.color))
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: confirming == index ? revealWidth - Self.gap * 2 : Self.buttonWidth)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.trailing, Self.gap)
+        .frame(width: revealWidth, alignment: .trailing)
     }
 }

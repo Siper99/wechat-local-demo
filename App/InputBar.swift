@@ -16,7 +16,7 @@ struct InputBar: View {
     var onSimulate: () -> Void
     var onLocation: () -> Void = {}
 
-    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var showPhotos = false
     @State private var voiceInput = false
     @State private var featureNotice: String?
     @State private var showCamera = false
@@ -34,11 +34,21 @@ struct InputBar: View {
                     inputFocused.wrappedValue = !voiceInput
                 }.accessibilityLabel(voiceInput ? "切换键盘" : "切换语音")
                 if voiceInput {
+                    // 8.0.78 灰度样式：无描边、更圆润扁平，右侧独立的“语音转文字”图标
                     Text("按住 说话")
-                        .font(.system(size: 16, weight: .medium))
-                        .frame(maxWidth: .infinity).frame(height: 38)
-                        .background(Color.inputField, in: RoundedRectangle(cornerRadius: 5))
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(maxWidth: .infinity).frame(height: 40)
+                        .background(Color.inputField, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         .onLongPressGesture { featureNotice = "语音消息" }
+                        .overlay(alignment: .trailing) {
+                            Button { featureNotice = "语音转文字" } label: {
+                                Image(systemName: "character.bubble")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 40, height: 40)
+                            }
+                            .accessibilityLabel("语音转文字")
+                        }
                 } else {
                     TextField("", text: $draft, axis: .vertical)
                     .font(.system(size: 17))
@@ -83,18 +93,9 @@ struct InputBar: View {
         .alert(featureNotice ?? "", isPresented: Binding(get: { featureNotice != nil }, set: { if !$0 { featureNotice = nil } })) {
             Button("知道了", role: .cancel) { }
         } message: { Text("此功能尚未接入；当前支持文字、图片和本地消息编辑。") }
-        .onChange(of: photoItems) { _, items in
-            guard !items.isEmpty else { return }
-            Task {
-                var images: [Data] = []
-                for item in items {
-                    if let data = try? await item.loadTransferable(type: Data.self),
-                       let jpeg = ImageUtil.downsampledJPEG(data) {
-                        images.append(jpeg)
-                    }
-                }
+        .sheet(isPresented: $showPhotos) {
+            PhotoSendSheet { images in
                 onImages(images)
-                photoItems = []
                 withAnimation { panel = .none }
             }
         }
@@ -179,10 +180,8 @@ struct InputBar: View {
 
     private var morePanel: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 18) {
-            PhotosPicker(selection: $photoItems, maxSelectionCount: 9, matching: .images) {
-                tile("photo", "相册")
-            }
-            .buttonStyle(.plain)
+            Button { showPhotos = true } label: { tile("photo", "相册") }
+                .buttonStyle(.plain)
             Button {
                 if UIImagePickerController.isSourceTypeAvailable(.camera) { showCamera = true }
                 else { featureNotice = "相机不可用" }
@@ -228,5 +227,68 @@ struct InputBar: View {
                 .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.inputField))
             Text(title).font(.system(size: 12)).foregroundStyle(.secondary)
         }
+    }
+}
+
+/// 新版微信的选图界面：白底半屏，底部可展开为全屏；选好后点“发送”
+struct PhotoSendSheet: View {
+    var onSend: ([Data]) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var items: [PhotosPickerItem] = []
+    @State private var loading = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button("取消") { dismiss() }
+                    .foregroundStyle(.primary)
+                Spacer()
+                Text("最近项目").font(.system(size: 17, weight: .semibold))
+                Spacer()
+                Button {
+                    Task { await send() }
+                } label: {
+                    Group {
+                        if loading { ProgressView().tint(.white) }
+                        else { Text(items.isEmpty ? "发送" : "发送(\(items.count))") }
+                    }
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .frame(height: 32)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(items.isEmpty ? Color.gray.opacity(0.4) : Color.brand))
+                }
+                .disabled(items.isEmpty || loading)
+                .accessibilityIdentifier("photos.send")
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 56)
+
+            PhotosPicker(selection: $items, maxSelectionCount: 9, selectionBehavior: .ordered, matching: .images) {
+                EmptyView()
+            }
+            .photosPickerStyle(.inline)
+            .photosPickerDisabledCapabilities([.selectionActions, .collectionNavigation])
+            .photosPickerAccessoryVisibility(.hidden, edges: .all)
+            .ignoresSafeArea(edges: .bottom)
+        }
+        .background(Color(.systemBackground))
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func send() async {
+        loading = true
+        var images: [Data] = []
+        for item in items {
+            if let data = try? await item.loadTransferable(type: Data.self),
+               let jpeg = ImageUtil.downsampledJPEG(data) {
+                images.append(jpeg)
+            }
+        }
+        loading = false
+        onSend(images)
+        dismiss()
     }
 }
