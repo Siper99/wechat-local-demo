@@ -1,0 +1,5 @@
+Source: https://itunes.apple.com/lookup?id=414478124&country=us
+App: WeChat (414478124)
+Asset: https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/67/18/c4/6718c476-1b89-430b-e0e0-c7a949990181/AppIcon-0-0-1x_U007epad-0-1-0-sRGB-0-85-220.png/1024x1024bb.png
+Fetched: 2026-09-22
+WeChat artwork belongs to its respective owner. Included for the requested local simulation prototype.
