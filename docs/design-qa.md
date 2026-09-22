@@ -9,6 +9,10 @@
 | 发送图片/视频改为白底半屏显示（2026 年 9 月灰度） | ＋ → 相册改为白底半屏选图，可上拉全屏，最多 9 张，按选择顺序发送 |
 | 好友资料页右上角新增“编辑”按钮，直达备注（2026 年 9 月灰度） | 资料页按微信样式重做：白色资料区、备注和标签、朋友权限、朋友圈、更多信息、发消息/音视频通话；右上角编辑和更多（删除联系人） |
 
+[1.3.0 构建与测试](https://github.com/Siper99/wechat-local-demo/actions/runs/35712754537)：IPA 构建成功，iPhone 16 / iOS 18.5 模拟器 5 项 UI 测试全部通过（新增 `testSwipeActionsPhotoSheetVoiceAndProfile`：左滑→删除→确认删除、半屏选图、语音输入样式、资料页发消息）。截图：[左滑菜单](screenshots/14-swipe-actions.png)、[半屏选图](screenshots/15-photo-sheet.png)、[语音输入](screenshots/16-voice-input.png)、[好友资料](screenshots/17-contact-profile.png)。
+
+实现说明：iOS 18 上 SwiftUI 的 DragGesture 会被 ScrollView 抢走，左滑改用 UIKit 平移手势（仅横向时开始，滚动视图等待其失败）；iOS 17 仍用 DragGesture。拖动过程中及刚结束的点按被忽略，避免左滑时误进聊天。
+
 未跟进：文件图标新样式（本应用没有文件消息）、小微 AI 助手与“按住问小微”、公众号耳机入口、液态玻璃风格应用图标（图标来源另有许可限制）。
 
 参考报道：
