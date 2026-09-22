@@ -147,8 +147,11 @@ final class ChatFlowTests: XCTestCase {
         app.buttons["更多功能"].tap()
         app.buttons["相册"].tap()
         XCTAssertTrue(app.buttons["photos.send"].waitForExistence(timeout: 5))
+        // 首次打开会有系统“私密访问照片”说明
+        let ok = app.buttons["好"]
+        if ok.waitForExistence(timeout: 2) { ok.tap() }
         capture("15-photo-sheet")
-        app.buttons["取消"].tap()
+        app.buttons["photos.cancel"].tap()
 
         // 语音输入样式
         app.buttons["切换语音"].tap()

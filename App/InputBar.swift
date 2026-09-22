@@ -239,41 +239,41 @@ struct PhotoSendSheet: View {
     @State private var loading = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button("取消") { dismiss() }
-                    .foregroundStyle(.primary)
-                Spacer()
-                Text("最近项目").font(.system(size: 17, weight: .semibold))
-                Spacer()
-                Button {
-                    Task { await send() }
-                } label: {
-                    Group {
-                        if loading { ProgressView().tint(.white) }
-                        else { Text(items.isEmpty ? "发送" : "发送(\(items.count))") }
-                    }
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .frame(height: 32)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(items.isEmpty ? Color.gray.opacity(0.4) : Color.brand))
-                }
-                .disabled(items.isEmpty || loading)
-                .accessibilityIdentifier("photos.send")
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 56)
-
+        NavigationStack {
             PhotosPicker(selection: $items, maxSelectionCount: 9, selectionBehavior: .ordered, matching: .images) {
                 EmptyView()
             }
             .photosPickerStyle(.inline)
-            .photosPickerDisabledCapabilities([.selectionActions, .collectionNavigation])
-            .photosPickerAccessoryVisibility(.hidden, edges: .all)
-            .ignoresSafeArea(edges: .bottom)
+            .photosPickerDisabledCapabilities(.selectionActions)
+            .navigationTitle("最近项目")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color(.systemBackground), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                        .foregroundStyle(.primary)
+                        .accessibilityIdentifier("photos.cancel")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        Task { await send() }
+                    } label: {
+                        Group {
+                            if loading { ProgressView().tint(.white) }
+                            else { Text(items.isEmpty ? "发送" : "发送(\(items.count))") }
+                        }
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .frame(height: 30)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(items.isEmpty ? Color.gray.opacity(0.4) : Color.brand))
+                    }
+                    .disabled(items.isEmpty || loading)
+                    .accessibilityIdentifier("photos.send")
+                }
+            }
         }
-        .background(Color(.systemBackground))
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
