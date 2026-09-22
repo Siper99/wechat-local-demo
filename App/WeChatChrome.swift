@@ -237,10 +237,14 @@ struct SwipeActionRow<Content: View>: View {
     let id: UUID
     @Binding var openID: UUID?
     let actions: [SwipeAction]
+    /// 点按行（已展开时改为收起）；拖动过程中及刚结束时的点按会被忽略
+    var onTap: () -> Void = {}
     @ViewBuilder var content: Content
 
     @State private var drag: CGFloat = 0
     @State private var confirming: Int?
+    @State private var dragging = false
+    @State private var lastDragEnd = Date.distantPast
 
     private static var buttonWidth: CGFloat { 76 }
     private static var gap: CGFloat { 6 }
@@ -251,17 +255,25 @@ struct SwipeActionRow<Content: View>: View {
 
     var body: some View {
         content
+            .onTapGesture {
+                guard !dragging, Date().timeIntervalSince(lastDragEnd) > 0.35 else { return }
+                if openID != nil { withAnimation(.snappy(duration: 0.25)) { openID = nil } }
+                else { onTap() }
+            }
             .offset(x: offset)
             .background(alignment: .trailing) { if offset < -1 { buttons } }
             .clipped()
             .simultaneousGesture(
                 DragGesture(minimumDistance: 14)
                     .onChanged { value in
+                        dragging = true
                         guard abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
                         let target = min(max(baseOffset + value.translation.width, -revealWidth - 30), 0)
                         drag = target - baseOffset
                     }
                     .onEnded { value in
+                        dragging = false
+                        lastDragEnd = Date()
                         guard drag != 0 else { return }
                         let final = baseOffset + drag + value.predictedEndTranslation.width * 0.2
                         withAnimation(.snappy(duration: 0.25)) {

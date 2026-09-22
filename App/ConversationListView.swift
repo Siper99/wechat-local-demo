@@ -34,17 +34,13 @@ struct ConversationListView: View {
                     WeChatSearchBar(text: $search)
                     if !desktopLogin.isEmpty && search.isEmpty { desktopLoginRow }
                     ForEach(sorted) { conversation in
-                        SwipeActionRow(id: conversation.id, openID: $swipedID, actions: swipeActions(for: conversation)) {
+                        SwipeActionRow(id: conversation.id, openID: $swipedID, actions: swipeActions(for: conversation),
+                                       onTap: { onOpen(conversation) }) {
                             ConversationRow(conversation: conversation)
                                 .padding(.horizontal, 16)
                                 .background(conversation.pinned ? Color.pinnedRow : Color(.systemBackground))
                                 .overlay(alignment: .bottom) {
                                     Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 0.5).padding(.leading, 76)
-                                }
-                                // 用点按手势而非 Button：横向拖动后松手不会误打开聊天
-                                .onTapGesture {
-                                    if swipedID != nil { withAnimation(.snappy) { swipedID = nil } }
-                                    else { onOpen(conversation) }
                                 }
                         }
                         .accessibilityIdentifier("conversation.\(conversation.title)")
