@@ -7,6 +7,8 @@ final class Contact {
     var name: String = ""
     @Attribute(.externalStorage) var avatarData: Data?
     var isMe: Bool = false
+    /// 文件传输助手等内置会话，不出现在通讯录字母列表
+    var isSystem: Bool = false
     var createdAt: Date = Date()
 
     @Relationship(deleteRule: .cascade, inverse: \Conversation.peer)
@@ -46,7 +48,7 @@ final class Conversation {
 }
 
 enum MessageKind: String, Codable {
-    case text, image, system
+    case text, image, system, location
 }
 
 @Model
@@ -61,6 +63,9 @@ final class Message {
     var quotedText: String? = nil
     var quotedSender: String? = nil
     var isFavorite: Bool = false
+    var locationAddress: String? = nil
+    var latitude: Double? = nil
+    var longitude: Double? = nil
 
     init(kind: MessageKind = .text, text: String = "", imageData: Data? = nil, fromMe: Bool, sentAt: Date = .now) {
         self.kindRaw = kind.rawValue
@@ -79,6 +84,7 @@ final class Message {
         switch kind {
         case .text, .system: return text
         case .image: return "[图片]"
+        case .location: return "[位置] " + text
         }
     }
 }

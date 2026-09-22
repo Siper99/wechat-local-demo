@@ -20,6 +20,8 @@ final class ChatFlowTests: XCTestCase {
     }
 
     func testMainPagesAndSearch() {
+        XCTAssertTrue(app.buttons["chats.desktopLogin"].exists)
+        XCTAssertTrue(app.staticTexts["文件传输助手"].exists)
         capture("01-chats")
         let search = app.textFields["search.field"]
         search.tap()
@@ -29,12 +31,16 @@ final class ChatFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["林小雨"].exists)
         app.buttons["tab.1"].tap()
         XCTAssertTrue(app.staticTexts["新的朋友"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["企业微信联系人"].exists)
+        XCTAssertFalse(app.staticTexts["文件传输助手"].exists)
         capture("02-contacts")
         app.buttons["tab.2"].tap()
         XCTAssertTrue(app.staticTexts["朋友圈"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["附近的人"].exists)
         capture("03-discover")
         app.buttons["tab.3"].tap()
         XCTAssertTrue(app.buttons["me.settings"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["小店与卡包"].exists)
         capture("04-me")
         app.buttons["me.settings"].tap()
         XCTAssertTrue(app.switches["settings.editMode"].waitForExistence(timeout: 3))
@@ -99,5 +105,22 @@ final class ChatFlowTests: XCTestCase {
         app.buttons["me.favorites"].tap()
         XCTAssertTrue(app.staticTexts["Quoted reply"].waitForExistence(timeout: 3))
         capture("12-favorites")
+    }
+
+    func testLocationMessageAndBackButton() {
+        app.staticTexts["林小雨"].tap()
+        XCTAssertTrue(app.buttons["nav.back"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["西湖文化广场"].waitForExistence(timeout: 3))
+        app.buttons["更多功能"].tap()
+        app.buttons["位置"].tap()
+        let name = app.textFields["location.name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 3))
+        name.tap()
+        name.typeText("Test Place")
+        app.buttons["location.send"].tap()
+        XCTAssertTrue(app.staticTexts["Test Place"].waitForExistence(timeout: 20))
+        capture("13-location")
+        app.buttons["nav.back"].tap()
+        XCTAssertTrue(app.buttons["tab.0"].waitForExistence(timeout: 3))
     }
 }

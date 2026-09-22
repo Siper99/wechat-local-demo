@@ -3,7 +3,7 @@ import SwiftData
 
 struct ContactsView: View {
     @Environment(\.modelContext) private var context
-    @Query(filter: #Predicate<Contact> { $0.isMe == false }) private var contacts: [Contact]
+    @Query(filter: #Predicate<Contact> { $0.isMe == false && $0.isSystem == false }) private var contacts: [Contact]
     @State private var showAdd = false
     @State private var search = ""
     @State private var feature: String?
@@ -21,27 +21,52 @@ struct ContactsView: View {
             }
     }
 
+    private static let indexLetters = (65...90).map { String(UnicodeScalar($0)!) } + ["#"]
+
+    /// 跳到该字母；没有该分组时跳到后面最近的分组
+    private func jump(to letter: String, proxy: ScrollViewProxy) {
+        let available = sections.map(\.letter)
+        let order = Self.indexLetters
+        guard let start = order.firstIndex(of: letter) else { return }
+        if let target = order[start...].first(where: { available.contains($0) }) ?? available.last {
+            proxy.scrollTo(target, anchor: .top)
+        }
+    }
+
+    private func entry(_ title: String, _ symbol: String, _ color: UInt32) -> some View {
+        Button { feature = title } label: { ContactEntryRow(title: title, symbol: symbol, color: color) }
+            .buttonStyle(.plain)
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+    }
+
     var body: some View {
         ScrollViewReader { proxy in
             List {
                 WeChatSearchBar(text: $search)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
-                Section {
-                    Button { showAdd = true } label: { IconRow(icon: "person.badge.plus", color: .orange, title: "新的朋友") }.buttonStyle(.plain)
-                    Button { feature = "群聊" } label: { IconRow(icon: "person.3.fill", color: Color.brand, title: "群聊") }.buttonStyle(.plain)
-                    Button { feature = "标签" } label: { IconRow(icon: "tag.fill", color: .blue, title: "标签") }.buttonStyle(.plain)
-                    Button { feature = "公众号" } label: { IconRow(icon: "person.crop.square", color: .blue, title: "公众号") }.buttonStyle(.plain)
+                    .id("top")
+                if search.isEmpty {
+                    Button { showAdd = true } label: { ContactEntryRow(title: "新的朋友", symbol: "person.fill.badge.plus", color: 0xFA9D3B) }
+                        .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    entry("仅聊天的朋友", "person.bubble.fill", 0xFA9D3B)
+                    entry("群聊", "person.2.fill", 0x07C160)
+                    entry("标签", "tag.fill", 0x1485EE)
+                    entry("公众号", "book.fill", 0x1485EE)
+                    entry("服务号", "rhombus.fill", 0x10AEFF)
+                    entry("企业微信联系人", "bubble.left.and.bubble.right", 0x2782D7)
                 }
                 ForEach(sections, id: \.letter) { section in
                     Text(section.letter)
-                        .font(.system(size: 12))
+                        .font(.system(size: 14))
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 16)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .frame(height: 24)
+                        .padding(.bottom, 6)
+                        .frame(maxWidth: .infinity, alignment: .bottomLeading)
+                        .frame(height: 44)
                         .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.chatBackground)
+                        .listRowBackground(Color(.systemBackground))
                         .listRowSeparator(.hidden)
                         .id(section.letter)
                         ForEach(section.contacts) { contact in
@@ -78,13 +103,23 @@ struct ContactsView: View {
             .environment(\.defaultMinListRowHeight, 0)
             .scrollDismissesKeyboard(.interactively)
             .overlay(alignment: .trailing) {
-                VStack(spacing: 4) {
-                    ForEach(sections, id: \.letter) { section in
-                        Button(section.letter) { withAnimation { proxy.scrollTo(section.letter, anchor: .top) } }
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.secondary)
+                if search.isEmpty {
+                    VStack(spacing: 0) {
+                        Button { proxy.scrollTo("top", anchor: .top) } label: {
+                            Image(systemName: "magnifyingglass").font(.system(size: 10, weight: .semibold))
+                                .frame(width: 20, height: 16)
+                        }
+                        .accessibilityLabel("索引搜索")
+                        ForEach(Self.indexLetters, id: \.self) { letter in
+                            Button { jump(to: letter, proxy: proxy) } label: {
+                                Text(letter).font(.system(size: 11, weight: .semibold))
+                                    .frame(width: 20, height: 16)
+                            }
+                        }
                     }
-                }.padding(.trailing, 3)
+                    .foregroundStyle(Color.dynamic(0x555555, 0xAAAAAA))
+                    .padding(.trailing, 2)
+                }
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -140,6 +175,28 @@ struct ContactDetailView: View {
             ToolbarItem(placement: .topBarTrailing) { Button("编辑") { showEdit = true } }
         }
         .sheet(isPresented: $showEdit) { ContactEditView(contact: contact) }
+    }
+}
+
+/// 通讯录顶部功能入口：40pt 彩色圆角图标 + 标题
+struct ContactEntryRow: View {
+    let title: String
+    let symbol: String
+    let color: UInt32
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.system(size: 19, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color(UIColor(hex: color))))
+            Text(title).font(.system(size: 17)).foregroundStyle(.primary)
+            Spacer(minLength: 0)
+        }
+        .frame(height: 56)
+        .contentShape(Rectangle())
+        .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] + 52 }
     }
 }
 

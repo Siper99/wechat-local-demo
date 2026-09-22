@@ -13,7 +13,7 @@ extension Color {
     static let chatBackground = dynamic(0xEDEDED, 0x111111)
     static let inputBar = dynamic(0xF7F7F7, 0x1E1E1E)
     static let inputField = dynamic(0xFFFFFF, 0x2C2C2C)
-    static let pinnedRow = dynamic(0xF3F3F3, 0x252525)
+    static let pinnedRow = dynamic(0xEFEFEF, 0x252525)
 
     static func dynamic(_ light: UInt32, _ dark: UInt32) -> Color {
         Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
@@ -35,21 +35,35 @@ struct AvatarView: View {
     var name: String
     var data: Data?
     var size: CGFloat = 40
+    var isSystem = false
 
-    init(name: String, data: Data?, size: CGFloat = 40) {
+    init(name: String, data: Data?, size: CGFloat = 40, isSystem: Bool = false) {
         self.name = name
         self.data = data
         self.size = size
+        self.isSystem = isSystem
     }
 
     init(contact: Contact?, size: CGFloat = 40) {
-        self.init(name: contact?.name ?? "?", data: contact?.avatarData, size: size)
+        self.init(name: contact?.name ?? "?", data: contact?.avatarData, size: size, isSystem: contact?.isSystem ?? false)
     }
 
     var body: some View {
         Group {
             if let data, let image = UIImage(data: data) {
                 Image(uiImage: image).resizable().scaledToFill()
+            } else if isSystem {
+                // 文件传输助手：绿底白色文件夹 + 箭头
+                ZStack {
+                    Color(UIColor(hex: 0x07C160))
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: size * 0.48))
+                        .foregroundStyle(.white)
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: size * 0.2, weight: .heavy))
+                        .foregroundStyle(Color(UIColor(hex: 0x07C160)))
+                        .offset(y: size * 0.03)
+                }
             } else {
                 ZStack {
                     Self.color(for: name)

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SimulationSettingsView: View {
     @AppStorage("editMode") private var editMode = false
+    @AppStorage("desktopLogin") private var desktopLogin = "Windows"
 
     var body: some View {
         List {
@@ -18,6 +19,13 @@ struct SimulationSettingsView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+            Section("界面") {
+                Picker("聊天列表登录提示", selection: $desktopLogin) {
+                    Text("Windows").tag("Windows")
+                    Text("Mac").tag("Mac")
+                    Text("不显示").tag("")
+                }
+            }
             Section("关于本应用") {
                 LabeledContent("类型", value: "本地聊天仿真")
                 LabeledContent("版本", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
@@ -28,7 +36,7 @@ struct SimulationSettingsView: View {
                 NavigationLink("开源许可") { OpenSourceNoticesView() }
             }
             Section("当前功能范围") {
-                Text("已实现：文字和图片聊天、搜索、转发、引用、收藏、多选删除、联系人、头像昵称、消息编辑、延迟回复、未读和置顶。")
+                Text("已实现：文字、图片和位置聊天、搜索、转发、引用、收藏、多选删除、联系人、头像昵称、消息编辑、延迟回复、未读和置顶。")
                 Text("朋友圈、视频号、服务等入口目前为界面展示；语音、视频通话、支付和联网聊天尚未实现。")
                     .foregroundStyle(.secondary)
             }

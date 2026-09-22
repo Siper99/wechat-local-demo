@@ -14,6 +14,7 @@ struct InputBar: View {
     var onSend: () -> Void
     var onImages: ([Data]) -> Void
     var onSimulate: () -> Void
+    var onLocation: () -> Void = {}
 
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var voiceInput = false
@@ -187,7 +188,7 @@ struct InputBar: View {
                 else { featureNotice = "相机不可用" }
             } label: { tile("camera", "拍摄") }.buttonStyle(.plain)
             Button { featureNotice = "视频通话" } label: { tile("video", "视频通话") }.buttonStyle(.plain)
-            Button { featureNotice = "位置" } label: { tile("location", "位置") }.buttonStyle(.plain)
+            Button { panel = .none; onLocation() } label: { tile("location", "位置") }.buttonStyle(.plain)
             Button { featureNotice = "红包" } label: { tile("gift", "红包") }.buttonStyle(.plain)
             Button { featureNotice = "转账" } label: { tile("arrow.left.arrow.right", "转账") }.buttonStyle(.plain)
             Button { featureNotice = "名片" } label: { tile("person.crop.rectangle", "名片") }.buttonStyle(.plain)

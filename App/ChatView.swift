@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import CoreLocation
 
 /// 记录当前正在看的会话，模拟回复到达时据此决定要不要加未读
 @MainActor
@@ -15,6 +16,7 @@ struct ChatView: View {
     @AppStorage("editMode") private var editMode = false
     @AppStorage("lastPasteChangeCount") private var lastPasteChangeCount = -1
     @Query(filter: #Predicate<Contact> { $0.isMe == true }) private var meList: [Contact]
+    @Query private var allConversations: [Conversation]
 
     @State private var draft = ""
     @State private var sendAsMe = true
@@ -33,6 +35,7 @@ struct ChatView: View {
     @State private var selectedIDs: Set<UUID> = []
     @State private var confirmDeleteSelection = false
     @State private var toast: String?
+    @State private var showLocation = false
     @FocusState private var inputFocused: Bool
 
     var body: some View {
@@ -54,14 +57,19 @@ struct ChatView: View {
                 }
                 InputBar(draft: $draft, panel: $panel, sendAsMe: $sendAsMe,
                      inputFocused: $inputFocused, editMode: editMode,
-                     onSend: send, onImages: sendImages, onSimulate: { showSimulate = true })
+                     onSend: send, onImages: sendImages, onSimulate: { showSimulate = true },
+                     onLocation: { inputFocused = false; showLocation = true })
             }
         }
         .background(Color.chatBackground.ignoresSafeArea())
         .navigationTitle(isSelecting ? "已选择 \(selectedIDs.count) 条" : peerTyping ? "对方正在输入..." : conversation.title)
         .weChatNavigation()
         .toolbar(.hidden, for: .tabBar)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                WeChatBackButton(unread: otherUnread)
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 if isSelecting {
                     Button("取消") { isSelecting = false; selectedIDs.removeAll() }
@@ -97,6 +105,11 @@ struct ChatView: View {
             SimulateReplySheet { text, delay in simulateReply(text: text, delay: delay) }
         }
         .fullScreenCover(item: $viewerImage) { ImageViewer(image: $0.image) }
+        .sheet(isPresented: $showLocation) {
+            LocationComposeSheet { name, address, coordinate in
+                sendLocation(name: name, address: address, coordinate: coordinate)
+            }
+        }
         .sheet(isPresented: $showForward) {
             NewChatView { target in forward(to: target) }
         }
@@ -115,6 +128,11 @@ struct ChatView: View {
                     .allowsHitTesting(false)
             }
         }
+    }
+
+    /// 返回按钮上显示的其他会话未读数（不含免打扰）
+    private var otherUnread: Int {
+        allConversations.filter { $0.id != conversation.id && !$0.muted }.reduce(0) { $0 + $1.unread }
     }
 
     // MARK: - 消息列表
@@ -168,6 +186,9 @@ struct ChatView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.bottom, 10)
+            }
+            .overlay(alignment: .top) {
+                Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 0.5)
             }
             .onAppear { scrollToBottom(proxy, messages) }
             .scrollDismissesKeyboard(.interactively)
@@ -271,6 +292,14 @@ struct ChatView: View {
         }
     }
 
+    private func sendLocation(name: String, address: String, coordinate: CLLocationCoordinate2D?) {
+        let message = context.addMessage(to: conversation, kind: .location, text: name, fromMe: editMode ? sendAsMe : true)
+        message.locationAddress = address
+        message.latitude = coordinate?.latitude
+        message.longitude = coordinate?.longitude
+        try? context.save()
+    }
+
     private func copy(_ message: Message) {
         UIPasteboard.general.string = message.text
         lastPasteChangeCount = UIPasteboard.general.changeCount
@@ -328,6 +357,9 @@ struct ChatView: View {
             let copy = context.addMessage(to: target, kind: message.kind, text: message.text, imageData: message.imageData, fromMe: true)
             copy.quotedText = message.quotedText
             copy.quotedSender = message.quotedSender
+            copy.locationAddress = message.locationAddress
+            copy.latitude = message.latitude
+            copy.longitude = message.longitude
         }
         try? context.save()
         forwardMessages = []

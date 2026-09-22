@@ -10,6 +10,11 @@ struct ConversationListView: View {
     @State private var search = ""
     @State private var showAddContact = false
     @State private var featureNotice: String?
+    @AppStorage("desktopLogin") private var desktopLogin = "Windows"
+
+    private var unreadTotal: Int {
+        conversations.filter { !$0.muted }.reduce(0) { $0 + $1.unread }
+    }
 
     private var sorted: [Conversation] {
         conversations.filter { conversation in
@@ -27,6 +32,29 @@ struct ConversationListView: View {
                 WeChatSearchBar(text: $search)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
+                if !desktopLogin.isEmpty && search.isEmpty {
+                    Button { featureNotice = "\(desktopLogin) 微信已登录" } label: {
+                        HStack(spacing: 0) {
+                            Image(systemName: desktopLogin == "Mac" ? "laptopcomputer" : "desktopcomputer")
+                                .font(.system(size: 21, weight: .light))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 48)
+                            Text("\(desktopLogin) 微信已登录")
+                                .font(.system(size: 15))
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, 12)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .frame(height: 56)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("chats.desktopLogin")
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.chatBackground)
+                    .listRowSeparator(.hidden)
+                }
                 ForEach(sorted) { conversation in
                     ZStack {
                         // 隐藏 NavigationLink 自带的箭头
@@ -66,9 +94,20 @@ struct ConversationListView: View {
                                            description: Text(search.isEmpty ? "点右上角 ＋ 发起聊天" : "试试其他联系人或聊天内容"))
                 }
             }
-            .navigationTitle("微信")
+            .navigationTitle(unreadTotal > 0 ? "微信 (\(unreadTotal))" : "微信")
             .weChatNavigation()
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { featureNotice = "小程序" } label: {
+                        HStack(spacing: 5) {
+                            Circle().frame(width: 7, height: 7)
+                            Circle().frame(width: 7, height: 7)
+                        }
+                        .foregroundStyle(Color.dynamic(0x3A3F4B, 0xD0D0D0))
+                        .frame(width: 36, height: 30, alignment: .leading)
+                    }
+                    .accessibilityLabel("小程序")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("发起群聊", systemImage: "bubble.left.and.bubble.right") { showNewChat = true }

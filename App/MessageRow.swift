@@ -62,6 +62,12 @@ struct MessageRow: View {
                     }
                 }
                 .contextMenu { menu }
+        case .location:
+            LocationBubble(message: message)
+                .onTapGesture {
+                    if editMode { onEdit() } else { LocationBubble.open(message) }
+                }
+                .contextMenu { menu }
         default:
             VStack(alignment: message.fromMe ? .trailing : .leading, spacing: 5) {
                 textBubble

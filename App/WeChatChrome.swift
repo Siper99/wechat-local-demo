@@ -110,13 +110,13 @@ struct WeChatRow: View {
 
     private var resource: String? {
         asset ?? ["朋友圈": "discover_moment", "扫一扫": "discover_qrcode", "看一看": "discover_see",
-                  "搜一搜": "discover_search", "附近": "discover_nearby", "购物": "discover_shop",
+                  "搜一搜": "discover_search", "附近的人": "discover_nearby",
                   "游戏": "discover_game", "小程序": "discover_miniprogram", "服务": "me_pay",
-                  "收藏": "me_favorite", "卡包": "me_bank_card", "表情": "me_emoji", "设置": "me_setting"][title]
+                  "收藏": "me_favorite", "表情": "me_emoji", "设置": "me_setting"][title]
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 16) {
             if let resource {
                 Image(resource).resizable().scaledToFit().frame(width: 24, height: 26)
             } else if let icon {
@@ -150,7 +150,7 @@ struct WeChatGroup<Content: View>: View {
 }
 
 struct WeChatSeparator: View {
-    var leading: CGFloat = 52
+    var leading: CGFloat = 56
     var body: some View { Divider().padding(.leading, leading) }
 }
 
@@ -159,10 +159,62 @@ extension Color {
 }
 
 extension View {
+    /// 导航栏外观由 WeChatAppearance 统一设置（灰底、无底部分隔线）
     func weChatNavigation() -> some View {
         self.navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.chatBackground, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar(.visible, for: .navigationBar)
+    }
+}
+
+enum WeChatAppearance {
+    static func apply() {
+        let background = UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0x111111) : UIColor(hex: 0xEDEDED) }
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = background
+        appearance.shadowColor = .clear
+        appearance.titleTextAttributes = [.font: UIFont.systemFont(ofSize: 17, weight: .semibold)]
+        let bar = UINavigationBar.appearance()
+        bar.standardAppearance = appearance
+        bar.scrollEdgeAppearance = appearance
+        bar.compactAppearance = appearance
+    }
+}
+
+/// 隐藏系统返回按钮后仍保留边缘右滑返回
+extension UINavigationController: UIGestureRecognizerDelegate {
+    override open func viewDidLoad() {
+        super.viewDidLoad()
+        interactivePopGestureRecognizer?.delegate = self
+    }
+
+    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        viewControllers.count > 1
+    }
+}
+
+/// 聊天页左上角：返回箭头 + 其他会话未读数（灰色圆角）
+struct WeChatBackButton: View {
+    let unread: Int
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Button { dismiss() } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 20, weight: .medium))
+                if unread > 0 {
+                    Text(unread > 99 ? "99+" : "\(unread)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 7)
+                        .frame(minWidth: 24, minHeight: 24)
+                        .background(Capsule().fill(Color.dynamic(0xD6D6D6, 0x3A3A3A)))
+                }
+            }
+            .foregroundStyle(.primary)
+        }
+        .accessibilityLabel(unread > 0 ? "返回，\(unread) 条未读" : "返回")
+        .accessibilityIdentifier("nav.back")
     }
 }

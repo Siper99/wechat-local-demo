@@ -9,26 +9,22 @@ struct DiscoverView: View {
             VStack(spacing: 8) {
                 WeChatGroup { entry("朋友圈", "camera.aperture", .orange) }
                 WeChatGroup {
-                    entry("视频号", "play.rectangle", .orange)
+                    entry("视频号", "infinity", Color(UIColor(hex: 0xFA9D3B)))
                     WeChatSeparator()
-                    entry("直播", "dot.radiowaves.left.and.right", .pink)
+                    entry("直播", "circle.circle", Color(UIColor(hex: 0xFA5151)))
                 }
                 WeChatGroup {
                     entry("扫一扫", "qrcode.viewfinder", .blue)
                     WeChatSeparator()
-                    entry("听一听", "music.note", .orange)
+                    entry("听一听", "music.note", Color(UIColor(hex: 0xFA5151)))
                 }
                 WeChatGroup {
                     entry("看一看", "sun.max", .orange)
                     WeChatSeparator()
                     entry("搜一搜", "magnifyingglass", .red)
                 }
-                WeChatGroup { entry("附近", "location", .blue) }
-                WeChatGroup {
-                    entry("购物", "bag", .orange)
-                    WeChatSeparator()
-                    entry("游戏", "gamecontroller", .purple)
-                }
+                WeChatGroup { entry("附近的人", "location", .blue) }
+                WeChatGroup { entry("游戏", "gamecontroller", .purple) }
                 WeChatGroup { entry("小程序", "app.connected.to.app.below.fill", .purple) }
             }
             .padding(.top, 8)
@@ -68,7 +64,9 @@ struct MeView: View {
                     WeChatSeparator()
                     entry("朋友圈", "photo", .blue)
                     WeChatSeparator()
-                    entry("卡包", "wallet.pass", .blue)
+                    entry("作品", "square.on.square", Color(UIColor(hex: 0x1485EE)))
+                    WeChatSeparator()
+                    entry("小店与卡包", "handbag", Color(UIColor(hex: 0xFA5151)))
                     WeChatSeparator()
                     entry("表情", "face.smiling", .orange)
                 }
@@ -101,35 +99,51 @@ struct MeView: View {
             Button { showProfile = true } label: { AvatarView(contact: me, size: 64) }
                 .buttonStyle(.plain)
                 .accessibilityLabel("编辑我的头像")
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 0) {
                 Button { showProfile = true } label: {
-                    VStack(alignment: .leading, spacing: 9) {
-                        Text(me?.name ?? "我")
-                            .font(.system(size: 23, weight: .semibold))
-                            .foregroundStyle(.primary)
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text(me?.name ?? "我")
+                                .font(.system(size: 22, weight: .semibold))
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                            Spacer(minLength: 8)
+                            Image("me_qrcode").resizable().scaledToFit().frame(width: 18, height: 18)
+                                .foregroundStyle(.secondary)
+                        }
                         HStack {
                             Text("微信号：\(me?.handle ?? "wxid_me")")
-                                .font(.system(size: 14))
+                                .font(.system(size: 16))
                                 .foregroundStyle(.secondary)
+                                .lineLimit(1)
                             Spacer(minLength: 8)
-                            Image(systemName: "qrcode").font(.system(size: 17))
-                            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Color.secondary.opacity(0.5))
                         }
-                        .foregroundStyle(.secondary)
                     }
-                }.buttonStyle(.plain)
-                Button { showStatus = true } label: {
-                    Label(profileStatus.isEmpty ? "状态" : profileStatus, systemImage: "plus")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 10).padding(.vertical, 5)
-                        .overlay(Capsule().stroke(Color.secondary.opacity(0.25), lineWidth: 0.5))
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("me.profile")
+                Button { showStatus = true } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus").font(.system(size: 12))
+                        Text(profileStatus.isEmpty ? "状态" : profileStatus).font(.system(size: 14))
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .frame(height: 26)
+                    .overlay(Capsule().stroke(Color.secondary.opacity(0.3), lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 12)
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 42)
-        .padding(.bottom, 36)
+        .padding(.leading, 28)
+        .padding(.trailing, 16)
+        .padding(.top, 62)
+        .padding(.bottom, 32)
         .background(Color(.systemBackground))
     }
 

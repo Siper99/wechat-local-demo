@@ -5,6 +5,10 @@ import SwiftData
 struct QingLiaoApp: App {
     let container = SharedStore.makeContainer()
 
+    init() {
+        WeChatAppearance.apply()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
