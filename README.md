@@ -15,7 +15,7 @@
 - `project-personal.yml`：个人安装版，不含 App Groups 和分享扩展，支持文字粘贴与相册选图。
 - `project.yml`：包含系统分享扩展的完整配置，需要对应签名能力。
 
-**当前交付是源码与构建流程，尚未生成或真机验证 IPA。** Windows 环境没有 Xcode，需在 GitHub Actions 或 Mac 上执行首次编译。
+**首次云端编译已成功并生成 IPA，尚未完成真机签名安装验证。** 打开 [成功构建与 IPA 下载](https://github.com/Siper99/wechat-local-demo/actions/runs/35696780434)，在 Artifacts 下载 `WeChat-Simulator-unsigned`；解压后用 AltStore Classic 签名安装。
 
 ## 仿真功能
 

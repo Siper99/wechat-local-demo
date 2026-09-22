@@ -2,13 +2,15 @@
 
 ## 推荐方案
 
-GitHub Actions 的 macOS 环境编译，Windows 的 AltServer 和 iPhone 的 AltStore Classic 完成个人签名安装。不需要拥有 Mac，不需要越狱。当前准备了源码与流程，尚未运行云端构建或真机安装。
+GitHub Actions 的 macOS 环境编译，Windows 的 AltServer 和 iPhone 的 AltStore Classic 完成个人签名安装。不需要拥有 Mac，不需要越狱。首次云端构建已成功，IPA 已生成；尚未完成真机签名安装验证。
 
 需要 iOS 17+ 的 iPhone、Windows 电脑、数据线、GitHub 账号和自己的 Apple 账号。
 
 免费账号签名 7 天后过期，需要刷新；同一设备最多安装 3 个此类个人签名应用，AltStore 也占用名额。参见 [Apple Personal Team 说明](https://developer.apple.com/help/account/basics/about-your-developer-account) 和 [AltStore 使用说明](https://faq.altstore.io/altstore-classic/your-altstore)。
 
 ## 1. 生成 IPA
+
+本项目已上传到 [私有仓库](https://github.com/Siper99/wechat-local-demo)，并已完成 [首次成功构建](https://github.com/Siper99/wechat-local-demo/actions/runs/35696780434)。你可以直接进入该构建页面下载 Artifacts，再从第 2 节开始。下面保留重新构建步骤。
 
 1. 登录 GitHub，新建一个 **Private 私有仓库**，例如 `wechat-local-demo`。
 2. 上传项目内容。仓库根目录应直接出现 `project-personal.yml`、`App`、`Shared`、`scripts` 和 `.github`，不要多套一层 QingLiao 文件夹，也不要只上传 ZIP。
@@ -72,4 +74,4 @@ Apple 账号用于本机签名，不要填进源码、GitHub 或聊天消息。
 
 确认桌面图标名称、首次示例聊天、发文字和图片、编辑身份与时间、模拟回复、修改头像昵称，以及退出重开后的数据保存。个人版不应申请 App Groups 或要求登录微信。
 
-文档整理于 2026-09-22；首次云端编译与真机验收尚待执行。
+文档整理于 2026-09-22；首次云端编译已通过，真机验收尚待执行。
