@@ -126,7 +126,14 @@ final class ChatFlowTests: XCTestCase {
 
     func testSwipeActionsPhotoSheetVoiceAndProfile() {
         // 会话左滑：圆角“标为未读 / 删除”，删除需确认
-        app.staticTexts["妈妈"].swipeLeft()
+        // 从行右侧横向拖到左侧，与手指左滑一致（swipeLeft 在短文本上距离太短）
+        let name = app.staticTexts["妈妈"]
+        XCTAssertTrue(name.waitForExistence(timeout: 3))
+        let rowY = name.frame.midY
+        let window = app.windows.firstMatch
+        let origin = window.coordinate(withNormalizedOffset: .zero)
+        origin.withOffset(CGVector(dx: window.frame.width - 40, dy: rowY))
+            .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 60, dy: rowY)))
         XCTAssertTrue(app.buttons["标为未读"].waitForExistence(timeout: 3))
         capture("14-swipe-actions")
         app.buttons["删除"].tap()
