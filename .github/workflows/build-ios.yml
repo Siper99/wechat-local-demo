@@ -23,3 +23,19 @@ jobs:
           path: build/WeChat-Simulator-unsigned.ipa
           if-no-files-found: error
           retention-days: 7
+      - name: Verify screens and chat interactions on iPhone simulator
+        run: bash scripts/verify-ui.sh
+      - name: Export UI screenshots
+        if: always()
+        run: |
+          if [ -d build/UI.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/UI.xcresult --output-path build/ui-screenshots
+          fi
+      - name: Upload UI verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iPhone-UI-verification
+          path: build/ui-screenshots
+          if-no-files-found: warn
+          retention-days: 7

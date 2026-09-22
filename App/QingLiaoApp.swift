@@ -18,24 +18,32 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Query private var conversations: [Conversation]
     @State private var toast: String?
+    @State private var selectedTab: MainTab = .chats
+    @State private var path = NavigationPath()
 
     private var unreadTotal: Int {
         conversations.filter { !$0.muted }.reduce(0) { $0 + $1.unread }
     }
 
     var body: some View {
-        TabView {
-            ConversationListView()
-                .tabItem { Label("WeChat", systemImage: "bubble.left.and.bubble.right.fill") }
-                .badge(unreadTotal)
-            ContactsView()
-                .tabItem { Label("通讯录", systemImage: "person.2.fill") }
-            DiscoverView()
-                .tabItem { Label("发现", systemImage: "safari.fill") }
-            MeView()
-                .tabItem { Label("我", systemImage: "person.fill") }
+        NavigationStack(path: $path) {
+            VStack(spacing: 0) {
+                Group {
+                    switch selectedTab {
+                    case .chats: ConversationListView { path.append($0) }
+                    case .contacts: ContactsView()
+                    case .discover: DiscoverView()
+                    case .me: MeView()
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                WeChatTabBar(selection: $selectedTab, unread: unreadTotal)
+            }
+            .background(Color.chatBackground)
+            .navigationDestination(for: Conversation.self) { ChatView(conversation: $0) }
+            .navigationDestination(for: Contact.self) { ContactDetailView(contact: $0) }
         }
-        .tint(Color.brand)
+        .tint(.primary)
         .task {
             SeedData.seedIfNeeded(context)
             ingestInbox()

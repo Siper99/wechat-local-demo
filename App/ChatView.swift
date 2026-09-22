@@ -26,31 +26,62 @@ struct ChatView: View {
     @State private var viewerImage: ViewerImage?
     @State private var showPasteHint = false
     @State private var pasteAsMe = false
+    @State private var quotedMessage: Message?
+    @State private var forwardMessages: [Message] = []
+    @State private var showForward = false
+    @State private var isSelecting = false
+    @State private var selectedIDs: Set<UUID> = []
+    @State private var confirmDeleteSelection = false
+    @State private var toast: String?
     @FocusState private var inputFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
             messageList
-            if showPasteHint { pasteHintBar }
-            InputBar(draft: $draft, panel: $panel, sendAsMe: $sendAsMe,
+            if isSelecting {
+                selectionBar
+            } else {
+                if showPasteHint && editMode { pasteHintBar }
+                if let quote = quotedMessage {
+                    HStack {
+                        Text("\(quote.fromMe ? "我" : conversation.title)：\(quote.preview)")
+                            .font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(2)
+                        Spacer()
+                        Button { quotedMessage = nil } label: { Image(systemName: "xmark") }
+                            .accessibilityLabel("取消引用")
+                    }
+                    .padding(12).background(Color.inputBar)
+                }
+                InputBar(draft: $draft, panel: $panel, sendAsMe: $sendAsMe,
                      inputFocused: $inputFocused, editMode: editMode,
                      onSend: send, onImages: sendImages, onSimulate: { showSimulate = true })
+            }
         }
         .background(Color.chatBackground.ignoresSafeArea())
-        .navigationTitle(peerTyping ? "对方正在输入..." : conversation.title)
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(isSelecting ? "已选择 \(selectedIDs.count) 条" : peerTyping ? "对方正在输入..." : conversation.title)
+        .weChatNavigation()
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { showSettings = true } label: { Image(systemName: "ellipsis") }
+                if isSelecting {
+                    Button("取消") { isSelecting = false; selectedIDs.removeAll() }
+                } else {
+                    Button { showSettings = true } label: { Image(systemName: "ellipsis") }
+                        .accessibilityLabel("聊天信息")
+                }
             }
         }
         .onAppear {
+            if draft.isEmpty { draft = conversation.draft }
             ChatPresence.visible.insert(conversation.id)
             conversation.unread = 0
             checkPasteboard()
         }
-        .onDisappear { ChatPresence.visible.remove(conversation.id) }
+        .onChange(of: draft) { _, value in conversation.draft = value }
+        .onDisappear {
+            ChatPresence.visible.remove(conversation.id)
+            try? context.save()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 conversation.unread = 0
@@ -61,11 +92,29 @@ struct ChatView: View {
         .sheet(item: $editingMessage) { message in
             MessageEditSheet(message: message) { deleteFromSheet(message) }
         }
-        .sheet(isPresented: $showSettings) { ConversationSettingsView(conversation: conversation) }
+        .navigationDestination(isPresented: $showSettings) { ConversationSettingsView(conversation: conversation) }
         .sheet(isPresented: $showSimulate) {
             SimulateReplySheet { text, delay in simulateReply(text: text, delay: delay) }
         }
         .fullScreenCover(item: $viewerImage) { ImageViewer(image: $0.image) }
+        .sheet(isPresented: $showForward) {
+            NewChatView { target in forward(to: target) }
+        }
+        .confirmationDialog("删除选中的 \(selectedIDs.count) 条消息？", isPresented: $confirmDeleteSelection, titleVisibility: .visible) {
+            Button("删除", role: .destructive) {
+                conversation.messages.filter { selectedIDs.contains($0.id) }.forEach { context.delete($0) }
+                try? context.save()
+                isSelecting = false
+                selectedIDs.removeAll()
+            }
+        }
+        .overlay(alignment: .center) {
+            if let toast {
+                Text(toast).font(.system(size: 15)).foregroundStyle(.white)
+                    .padding(20).background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 8))
+                    .allowsHitTesting(false)
+            }
+        }
     }
 
     // MARK: - 消息列表
@@ -83,7 +132,13 @@ struct ChatView: View {
                                 .padding(.top, 14)
                                 .padding(.bottom, 4)
                         }
-                        MessageRow(
+                        HStack(spacing: 8) {
+                            if isSelecting {
+                                Image(systemName: selectedIDs.contains(message.id) ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 23))
+                                    .foregroundStyle(selectedIDs.contains(message.id) ? Color.brand : Color.secondary)
+                            }
+                            MessageRow(
                             message: message,
                             me: meList.first,
                             peer: conversation.peer,
@@ -93,15 +148,28 @@ struct ChatView: View {
                             onRecall: { recall(message) },
                             onDelete: { delete(message) },
                             onToggleSender: { message.fromMe.toggle() },
-                            onTapImage: { viewerImage = ViewerImage(image: $0) }
+                            onTapImage: { viewerImage = ViewerImage(image: $0) },
+                            onForward: { forwardMessages = [message]; showForward = true },
+                            onQuote: { quotedMessage = message; panel = .none; inputFocused = true },
+                            onFavorite: { message.isFavorite.toggle(); try? context.save(); showToast(message.isFavorite ? "已收藏" : "已取消收藏") },
+                            onSelect: { inputFocused = false; panel = .none; isSelecting = true; selectedIDs = [message.id] }
                         )
+                            .allowsHitTesting(!isSelecting)
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if isSelecting {
+                                if selectedIDs.contains(message.id) { selectedIDs.remove(message.id) }
+                                else { selectedIDs.insert(message.id) }
+                            }
+                        }
                         .id(message.id)
                     }
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 10)
                 .padding(.bottom, 10)
             }
-            .defaultScrollAnchor(.bottom)
+            .onAppear { scrollToBottom(proxy, messages) }
             .scrollDismissesKeyboard(.interactively)
             .simultaneousGesture(TapGesture().onEnded {
                 inputFocused = false
@@ -187,7 +255,11 @@ struct ChatView: View {
     private func send() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        context.addMessage(to: conversation, text: text, fromMe: editMode ? sendAsMe : true)
+        let message = context.addMessage(to: conversation, text: text, fromMe: editMode ? sendAsMe : true)
+        message.quotedText = quotedMessage?.preview
+        message.quotedSender = quotedMessage.map { $0.fromMe ? "我" : conversation.title }
+        quotedMessage = nil
+        try? context.save()
         draft = ""
     }
 
@@ -233,6 +305,40 @@ struct ChatView: View {
             }
             try? context.save()
         }
+    }
+
+    private var selectionBar: some View {
+        HStack {
+            Button {
+                forwardMessages = conversation.sortedMessages.filter { selectedIDs.contains($0.id) }
+                showForward = true
+            } label: { Label("转发", systemImage: "arrowshape.turn.up.right").frame(maxWidth: .infinity) }
+            Button(role: .destructive) { confirmDeleteSelection = true } label: {
+                Label("删除", systemImage: "trash").frame(maxWidth: .infinity)
+            }
+        }
+        .font(.system(size: 17))
+        .disabled(selectedIDs.isEmpty)
+        .padding(.vertical, 18)
+        .background(Color.inputBar.ignoresSafeArea(edges: .bottom))
+    }
+
+    private func forward(to target: Conversation) {
+        for message in forwardMessages {
+            let copy = context.addMessage(to: target, kind: message.kind, text: message.text, imageData: message.imageData, fromMe: true)
+            copy.quotedText = message.quotedText
+            copy.quotedSender = message.quotedSender
+        }
+        try? context.save()
+        forwardMessages = []
+        isSelecting = false
+        selectedIDs.removeAll()
+        showToast("已发送")
+    }
+
+    private func showToast(_ text: String) {
+        toast = text
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { toast = nil }
     }
 }
 

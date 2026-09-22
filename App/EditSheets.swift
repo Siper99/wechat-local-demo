@@ -56,35 +56,51 @@ struct MessageEditSheet: View {
 struct ConversationSettingsView: View {
     @Bindable var conversation: Conversation
     @Environment(\.modelContext) private var context
-    @Environment(\.dismiss) private var dismiss
+    @AppStorage("editMode") private var editMode = false
     @State private var confirmClear = false
+    @State private var showProfile = false
 
     var body: some View {
-        NavigationStack {
-            Form {
-                if let peer = conversation.peer {
-                    Section("对方资料") { ContactFields(contact: peer) }
-                }
-                Section {
-                    Toggle("置顶聊天", isOn: $conversation.pinned)
-                    Toggle("消息免打扰", isOn: $conversation.muted)
+        List {
+            Section {
+                HStack(alignment: .top, spacing: 24) {
+                    Button { showProfile = true } label: {
+                        VStack(spacing: 6) {
+                            AvatarView(contact: conversation.peer, size: 54)
+                            Text(conversation.title).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
+                        }.frame(width: 64)
+                    }.buttonStyle(.plain)
+                    Spacer()
+                }.padding(.vertical, 14)
+            }
+            Section {
+                NavigationLink { ChatHistoryView(conversation: conversation) } label: { Text("查找聊天记录") }
+            }
+            Section {
+                Toggle("消息免打扰", isOn: $conversation.muted)
+                Toggle("置顶聊天", isOn: $conversation.pinned)
+            }.tint(Color.brand)
+            if editMode {
+                Section("仿真设置") {
+                    Button("修改头像和昵称") { showProfile = true }
                     Stepper("未读数：\(conversation.unread)", value: $conversation.unread, in: 0...999)
                 }
-                Section {
-                    Button("清空聊天记录", role: .destructive) { confirmClear = true }
-                }
             }
-            .navigationTitle("聊天信息")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } }
+            Section {
+                Button("清空聊天记录") { confirmClear = true }
+                    .foregroundStyle(.primary)
             }
-            .confirmationDialog("确定清空聊天记录？", isPresented: $confirmClear, titleVisibility: .visible) {
-                Button("清空", role: .destructive) {
-                    let messages = conversation.messages
-                    messages.forEach { context.delete($0) }
-                    try? context.save()
-                }
+        }
+        .listStyle(.grouped)
+        .navigationTitle("聊天信息")
+        .weChatNavigation()
+        .sheet(isPresented: $showProfile) {
+            if let peer = conversation.peer { ContactEditView(contact: peer) }
+        }
+        .confirmationDialog("确定清空聊天记录？", isPresented: $confirmClear, titleVisibility: .visible) {
+            Button("清空", role: .destructive) {
+                conversation.messages.forEach { context.delete($0) }
+                try? context.save()
             }
         }
     }

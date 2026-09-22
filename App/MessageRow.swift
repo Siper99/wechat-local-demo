@@ -11,6 +11,11 @@ struct MessageRow: View {
     var onDelete: () -> Void
     var onToggleSender: () -> Void
     var onTapImage: (UIImage) -> Void
+    var onForward: () -> Void
+    var onQuote: () -> Void
+    var onFavorite: () -> Void
+    var onSelect: () -> Void
+    @State private var showFullText = false
 
     var body: some View {
         if message.kind == .system {
@@ -27,7 +32,7 @@ struct MessageRow: View {
                     Button("删除", systemImage: "trash", role: .destructive, action: onDelete)
                 }
         } else {
-            HStack(alignment: .top, spacing: 8) {
+            HStack(alignment: .top, spacing: 6) {
                 if message.fromMe {
                     Spacer(minLength: 56)
                     bubble
@@ -39,6 +44,9 @@ struct MessageRow: View {
                 }
             }
             .padding(.vertical, 7)
+            .fullScreenCover(isPresented: $showFullText) {
+                FullTextView(text: message.text)
+            }
         }
     }
 
@@ -55,8 +63,20 @@ struct MessageRow: View {
                 }
                 .contextMenu { menu }
         default:
-            textBubble
-                .onTapGesture { if editMode { onEdit() } }
+            VStack(alignment: message.fromMe ? .trailing : .leading, spacing: 5) {
+                textBubble
+                    .onTapGesture(count: 2) { showFullText = true }
+                    .onTapGesture { if editMode { onEdit() } }
+                if let quote = message.quotedText {
+                    Text("\(message.quotedSender ?? "联系人")：\(quote)")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                        .padding(.horizontal, 8).padding(.vertical, 6)
+                        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 4))
+                        .padding(.horizontal, BubbleShape.arrowWidth)
+                }
+            }
                 .contextMenu { menu }
         }
     }
@@ -102,10 +122,37 @@ struct MessageRow: View {
         if message.kind == .text {
             Button("复制", systemImage: "doc.on.doc", action: onCopy)
         }
-        Button("编辑", systemImage: "pencil", action: onEdit)
-        Button(message.fromMe ? "改为对方发送" : "改为我发送", systemImage: "arrow.left.arrow.right", action: onToggleSender)
-        Button("撤回", systemImage: "arrow.uturn.backward", action: onRecall)
+        Button("转发", systemImage: "arrowshape.turn.up.right", action: onForward)
+        Button(message.isFavorite ? "取消收藏" : "收藏", systemImage: "cube", action: onFavorite)
+        Button("引用", systemImage: "quote.bubble", action: onQuote)
+        if message.fromMe || editMode {
+            Button("撤回", systemImage: "arrow.uturn.backward", action: onRecall)
+        }
+        Button("多选", systemImage: "checkmark.circle", action: onSelect)
+        if editMode {
+            Button("编辑", systemImage: "pencil", action: onEdit)
+            Button(message.fromMe ? "改为对方发送" : "改为我发送", systemImage: "arrow.left.arrow.right", action: onToggleSender)
+        }
         Button("删除", systemImage: "trash", role: .destructive, action: onDelete)
+    }
+}
+
+struct FullTextView: View {
+    let text: String
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        ScrollView {
+            Text(text).font(.system(size: 28))
+                .frame(maxWidth: .infinity, minHeight: 400, alignment: .center)
+                .padding(28)
+        }
+        .background(Color(.systemBackground))
+        .contentShape(Rectangle())
+        .onTapGesture { dismiss() }
+        .overlay(alignment: .topTrailing) {
+            Button { dismiss() } label: { Image(systemName: "xmark").padding(20) }
+                .accessibilityLabel("关闭全文")
+        }
     }
 }
 

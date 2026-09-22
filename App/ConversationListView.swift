@@ -2,28 +2,38 @@ import SwiftUI
 import SwiftData
 
 struct ConversationListView: View {
+    var onOpen: (Conversation) -> Void
     @Environment(\.modelContext) private var context
     @Query private var conversations: [Conversation]
-    @State private var path: [Conversation] = []
     @State private var editing: Conversation?
     @State private var showNewChat = false
+    @State private var search = ""
+    @State private var showAddContact = false
+    @State private var featureNotice: String?
 
     private var sorted: [Conversation] {
-        conversations.sorted { a, b in
+        conversations.filter { conversation in
+            search.isEmpty || conversation.title.localizedStandardContains(search) ||
+            conversation.messages.contains { $0.text.localizedStandardContains(search) }
+        }.sorted { a, b in
             if a.pinned != b.pinned { return a.pinned }
             return a.lastActivity > b.lastActivity
         }
     }
 
     var body: some View {
-        NavigationStack(path: $path) {
+        Group {
             List {
+                WeChatSearchBar(text: $search)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
                 ForEach(sorted) { conversation in
                     ZStack {
                         // 隐藏 NavigationLink 自带的箭头
                         NavigationLink(value: conversation) { EmptyView() }.opacity(0)
                         ConversationRow(conversation: conversation)
                     }
+                    .accessibilityIdentifier("conversation.\(conversation.title)")
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowBackground(conversation.pinned ? Color.pinnedRow : Color(.systemBackground))
                     .swipeActions(edge: .trailing) {
@@ -46,24 +56,39 @@ struct ConversationListView: View {
                 }
             }
             .listStyle(.plain)
+            .scrollDismissesKeyboard(.interactively)
+            .environment(\.defaultMinListRowHeight, 0)
+            .scrollContentBackground(.hidden)
+            .background(Color(.systemBackground))
             .overlay {
-                if conversations.isEmpty {
-                    ContentUnavailableView("暂无聊天", systemImage: "bubble.left.and.bubble.right",
-                                           description: Text("点右上角 ＋ 发起聊天"))
+                if sorted.isEmpty {
+                    ContentUnavailableView(search.isEmpty ? "暂无聊天" : "无搜索结果", systemImage: "bubble.left.and.bubble.right",
+                                           description: Text(search.isEmpty ? "点右上角 ＋ 发起聊天" : "试试其他联系人或聊天内容"))
                 }
             }
-            .navigationTitle("WeChat")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: Conversation.self) { ChatView(conversation: $0) }
+            .navigationTitle("微信")
+            .weChatNavigation()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showNewChat = true } label: { Image(systemName: "plus.circle") }
+                    Menu {
+                        Button("发起群聊", systemImage: "bubble.left.and.bubble.right") { showNewChat = true }
+                        Button("添加朋友", systemImage: "person.badge.plus") { showAddContact = true }
+                        Button("扫一扫", systemImage: "qrcode.viewfinder") { featureNotice = "扫一扫" }
+                        Button("收付款", systemImage: "qrcode") { featureNotice = "收付款" }
+                    } label: {
+                        Image(systemName: "plus.circle").font(.system(size: 22, weight: .regular))
+                    }
+                    .accessibilityLabel("添加")
                 }
             }
             .sheet(item: $editing) { ConversationSettingsView(conversation: $0) }
             .sheet(isPresented: $showNewChat) {
-                NewChatView { path = [$0] }
+                NewChatView { onOpen($0) }
             }
+            .sheet(isPresented: $showAddContact) { ContactEditView() }
+            .alert(featureNotice ?? "", isPresented: Binding(get: { featureNotice != nil }, set: { if !$0 { featureNotice = nil } })) {
+                Button("知道了", role: .cancel) { }
+            } message: { Text("当前为本地聊天演示，此功能尚未接入。") }
         }
     }
 }
@@ -78,6 +103,9 @@ struct ConversationRow: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
+                    if !conversation.draft.isEmpty {
+                        Text("[草稿]").foregroundStyle(.red).font(.system(size: 14))
+                    }
                     Text(conversation.title)
                         .font(.system(size: 17))
                         .lineLimit(1)
@@ -106,6 +134,7 @@ struct ConversationRow: View {
     }
 
     private var previewText: String {
+        if !conversation.draft.isEmpty { return conversation.draft }
         let preview = conversation.lastMessage?.preview ?? ""
         if conversation.muted && conversation.unread > 0 {
             return "[\(conversation.unread)条] " + preview

@@ -5,9 +5,11 @@ struct ContactsView: View {
     @Environment(\.modelContext) private var context
     @Query(filter: #Predicate<Contact> { $0.isMe == false }) private var contacts: [Contact]
     @State private var showAdd = false
+    @State private var search = ""
+    @State private var feature: String?
 
     private var sections: [(letter: String, contacts: [Contact])] {
-        Dictionary(grouping: contacts) { PinyinIndex.letter(for: $0.name) }
+        Dictionary(grouping: contacts.filter { search.isEmpty || $0.name.localizedStandardContains(search) || $0.handle.localizedStandardContains(search) }) { PinyinIndex.letter(for: $0.name) }
             .map { entry in
                 (letter: entry.key,
                  contacts: entry.value.sorted { PinyinIndex.latin($0.name) < PinyinIndex.latin($1.name) })
@@ -20,22 +22,28 @@ struct ContactsView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        ScrollViewReader { proxy in
             List {
+                WeChatSearchBar(text: $search)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
                 Section {
-                    IconRow(icon: "person.badge.plus", color: .orange, title: "新的朋友")
-                    IconRow(icon: "person.3.fill", color: Color.brand, title: "群聊")
-                    IconRow(icon: "tag.fill", color: .blue, title: "标签")
+                    Button { showAdd = true } label: { IconRow(icon: "person.badge.plus", color: .orange, title: "新的朋友") }.buttonStyle(.plain)
+                    Button { feature = "群聊" } label: { IconRow(icon: "person.3.fill", color: Color.brand, title: "群聊") }.buttonStyle(.plain)
+                    Button { feature = "标签" } label: { IconRow(icon: "tag.fill", color: .blue, title: "标签") }.buttonStyle(.plain)
+                    Button { feature = "公众号" } label: { IconRow(icon: "person.crop.square", color: .blue, title: "公众号") }.buttonStyle(.plain)
                 }
                 ForEach(sections, id: \.letter) { section in
                     Section(section.letter) {
                         ForEach(section.contacts) { contact in
-                            NavigationLink(value: contact) {
+                            ZStack {
+                                NavigationLink(value: contact) { EmptyView() }.opacity(0)
                                 HStack(spacing: 12) {
                                     AvatarView(contact: contact, size: 40)
                                     Text(contact.name).font(.system(size: 17))
                                 }
-                                .padding(.vertical, 2)
+                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .swipeActions {
                                 Button("删除", role: .destructive) {
@@ -45,6 +53,7 @@ struct ContactsView: View {
                             }
                         }
                     }
+                    .id(section.letter)
                 }
                 Section {
                     Text("\(contacts.count) 个朋友")
@@ -57,14 +66,27 @@ struct ContactsView: View {
             }
             .listStyle(.plain)
             .navigationTitle("通讯录")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: Contact.self) { ContactDetailView(contact: $0) }
+            .weChatNavigation()
+            .environment(\.defaultMinListRowHeight, 54)
+            .scrollDismissesKeyboard(.interactively)
+            .overlay(alignment: .trailing) {
+                VStack(spacing: 4) {
+                    ForEach(sections, id: \.letter) { section in
+                        Button(section.letter) { withAnimation { proxy.scrollTo(section.letter, anchor: .top) } }
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }.padding(.trailing, 3)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showAdd = true } label: { Image(systemName: "person.badge.plus") }
                 }
             }
             .sheet(isPresented: $showAdd) { ContactEditView() }
+            .alert(feature ?? "", isPresented: Binding(get: { feature != nil }, set: { if !$0 { feature = nil } })) {
+                Button("知道了", role: .cancel) { }
+            } message: { Text("当前版本支持一对一聊天，此功能暂未接入。") }
         }
     }
 }
@@ -123,8 +145,8 @@ struct IconRow: View {
             Image(systemName: icon)
                 .font(.system(size: 17))
                 .foregroundStyle(.white)
-                .frame(width: 34, height: 34)
-                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(color))
+                .frame(width: 36, height: 36)
+                .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(color))
             Text(title).font(.system(size: 17))
         }
         .padding(.vertical, 2)

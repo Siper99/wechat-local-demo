@@ -16,6 +16,9 @@ struct InputBar: View {
     var onSimulate: () -> Void
 
     @State private var photoItems: [PhotosPickerItem] = []
+    @State private var voiceInput = false
+    @State private var featureNotice: String?
+    @State private var showCamera = false
 
     private static let emojis = "😀😁😂🤣😊😍😘😎🤔😅😭😡👍👎👏🙏💪🤝🎉❤️💔🌹☕️🍺🎂🔥✨😴🤗😳😱🙄😏😬🤐😷🤒😇🥳🥺😤👌✌️🙈🌙☀️🍉🐶🐱".map(String.init)
 
@@ -24,27 +27,38 @@ struct InputBar: View {
             Divider()
             if editMode { senderSwitch }
             HStack(alignment: .bottom, spacing: 8) {
-                barIcon("mic.circle") {}
-                TextField("", text: $draft, axis: .vertical)
+                barIcon(voiceInput ? "keyboard" : "mic.circle", asset: voiceInput ? nil : "chat_send_voice") {
+                    voiceInput.toggle()
+                    panel = .none
+                    inputFocused.wrappedValue = !voiceInput
+                }.accessibilityLabel(voiceInput ? "切换键盘" : "切换语音")
+                if voiceInput {
+                    Text("按住 说话")
+                        .font(.system(size: 16, weight: .medium))
+                        .frame(maxWidth: .infinity).frame(height: 38)
+                        .background(Color.inputField, in: RoundedRectangle(cornerRadius: 5))
+                        .onLongPressGesture { featureNotice = "语音消息" }
+                } else {
+                    TextField("", text: $draft, axis: .vertical)
                     .font(.system(size: 17))
                     .lineLimit(1...5)
                     .focused(inputFocused)
                     .submitLabel(.send)
+                    .accessibilityIdentifier("chat.input")
+                    .accessibilityLabel("消息输入框")
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
                     .background(RoundedRectangle(cornerRadius: 6).fill(Color.inputField))
-                    .onChange(of: draft) { _, newValue in
-                        // 回车 = 发送
-                        if newValue.hasSuffix("\n") {
-                            draft.removeLast()
-                            onSend()
-                        }
-                    }
-                barIcon(panel == .emoji ? "keyboard" : "face.smiling") { toggle(.emoji) }
+                    .onSubmit(onSend)
+                }
+                barIcon(panel == .emoji ? "keyboard" : "face.smiling", asset: panel == .emoji ? nil : "chat_send_emoji") { voiceInput = false; toggle(.emoji) }
+                    .accessibilityLabel("表情")
                 if draft.isEmpty {
-                    barIcon("plus.circle") { toggle(.more) }
+                    barIcon("plus.circle", asset: "chat_send_more") { voiceInput = false; toggle(.more) }
+                        .accessibilityLabel("更多功能")
                 } else {
                     Button("发送", action: onSend)
+                        .accessibilityIdentifier("chat.send")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 12)
@@ -62,6 +76,12 @@ struct InputBar: View {
             }
         }
         .background(Color.inputBar.ignoresSafeArea(edges: .bottom))
+        .sheet(isPresented: $showCamera) {
+            CameraPicker { data in onImages([data]); showCamera = false }
+        }
+        .alert(featureNotice ?? "", isPresented: Binding(get: { featureNotice != nil }, set: { if !$0 { featureNotice = nil } })) {
+            Button("知道了", role: .cancel) { }
+        } message: { Text("此功能尚未接入；当前支持文字、图片和本地消息编辑。") }
         .onChange(of: photoItems) { _, items in
             guard !items.isEmpty else { return }
             Task {
@@ -81,8 +101,7 @@ struct InputBar: View {
 
     private var senderSwitch: some View {
         HStack(spacing: 8) {
-            Image(systemName: "pencil.circle.fill").foregroundStyle(.orange)
-            Text("编辑模式 · 以此身份发送")
+            Text("发送身份")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
             Spacer()
@@ -97,12 +116,15 @@ struct InputBar: View {
         .padding(.top, 8)
     }
 
-    private func barIcon(_ name: String, action: @escaping () -> Void) -> some View {
+    private func barIcon(_ name: String, asset: String? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: name)
-                .font(.system(size: 27, weight: .light))
-                .foregroundStyle(.primary)
-                .frame(height: 37)
+            Group {
+                if let asset {
+                    Image(asset).resizable().scaledToFit().frame(width: 28, height: 28)
+                } else {
+                    Image(systemName: name).font(.system(size: 27, weight: .light))
+                }
+            }.foregroundStyle(.primary).frame(width: 30, height: 38)
         }
     }
 
@@ -160,7 +182,15 @@ struct InputBar: View {
                 tile("photo", "相册")
             }
             .buttonStyle(.plain)
-
+            Button {
+                if UIImagePickerController.isSourceTypeAvailable(.camera) { showCamera = true }
+                else { featureNotice = "相机不可用" }
+            } label: { tile("camera", "拍摄") }.buttonStyle(.plain)
+            Button { featureNotice = "视频通话" } label: { tile("video", "视频通话") }.buttonStyle(.plain)
+            Button { featureNotice = "位置" } label: { tile("location", "位置") }.buttonStyle(.plain)
+            Button { featureNotice = "红包" } label: { tile("gift", "红包") }.buttonStyle(.plain)
+            Button { featureNotice = "转账" } label: { tile("arrow.left.arrow.right", "转账") }.buttonStyle(.plain)
+            Button { featureNotice = "名片" } label: { tile("person.crop.rectangle", "名片") }.buttonStyle(.plain)
             VStack(spacing: 6) {
                 PasteButton(payloadType: String.self) { strings in
                     Task { @MainActor in
@@ -185,7 +215,7 @@ struct InputBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 20)
-        .frame(height: 230, alignment: .top)
+        .frame(height: editMode ? 330 : 240, alignment: .top)
     }
 
     private func tile(_ icon: String, _ title: String) -> some View {

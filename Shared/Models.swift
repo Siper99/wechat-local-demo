@@ -31,6 +31,7 @@ final class Conversation {
     var pinned: Bool = false
     var muted: Bool = false
     var unread: Int = 0
+    var draft: String = ""
     var createdAt: Date = Date()
 
     @Relationship(deleteRule: .cascade, inverse: \Message.conversation)
@@ -57,6 +58,9 @@ final class Message {
     var text: String = ""
     @Attribute(.externalStorage) var imageData: Data?
     var sentAt: Date = Date()
+    var quotedText: String? = nil
+    var quotedSender: String? = nil
+    var isFavorite: Bool = false
 
     init(kind: MessageKind = .text, text: String = "", imageData: Data? = nil, fromMe: Bool, sentAt: Date = .now) {
         self.kindRaw = kind.rawValue

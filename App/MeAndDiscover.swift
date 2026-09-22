@@ -2,92 +2,140 @@ import SwiftUI
 import SwiftData
 
 struct DiscoverView: View {
+    @State private var feature: String?
+
     var body: some View {
-        NavigationStack {
-            List {
-                Section { IconRow(icon: "camera.aperture", color: .orange, title: "朋友圈") }
-                Section {
-                    IconRow(icon: "play.rectangle.fill", color: .orange, title: "视频号")
-                    IconRow(icon: "dot.radiowaves.left.and.right", color: .pink, title: "直播")
+        ScrollView {
+            VStack(spacing: 8) {
+                WeChatGroup { entry("朋友圈", "camera.aperture", .orange) }
+                WeChatGroup {
+                    entry("视频号", "play.rectangle", .orange)
+                    WeChatSeparator()
+                    entry("直播", "dot.radiowaves.left.and.right", .pink)
                 }
-                Section {
-                    IconRow(icon: "qrcode.viewfinder", color: .blue, title: "扫一扫")
-                    IconRow(icon: "iphone.radiowaves.left.and.right", color: .blue, title: "摇一摇")
+                WeChatGroup {
+                    entry("扫一扫", "qrcode.viewfinder", .blue)
+                    WeChatSeparator()
+                    entry("听一听", "music.note", .orange)
                 }
-                Section {
-                    IconRow(icon: "sparkles", color: .yellow, title: "看一看")
-                    IconRow(icon: "magnifyingglass", color: .red, title: "搜一搜")
+                WeChatGroup {
+                    entry("看一看", "sun.max", .orange)
+                    WeChatSeparator()
+                    entry("搜一搜", "magnifyingglass", .red)
                 }
-                Section { IconRow(icon: "location.fill", color: .blue, title: "附近") }
-                Section {
-                    IconRow(icon: "bag.fill", color: .orange, title: "购物")
-                    IconRow(icon: "gamecontroller.fill", color: .purple, title: "游戏")
+                WeChatGroup { entry("附近", "location", .blue) }
+                WeChatGroup {
+                    entry("购物", "bag", .orange)
+                    WeChatSeparator()
+                    entry("游戏", "gamecontroller", .purple)
                 }
-                Section { IconRow(icon: "square.grid.2x2.fill", color: .purple, title: "小程序") }
+                WeChatGroup { entry("小程序", "app.connected.to.app.below.fill", .purple) }
             }
-            .navigationTitle("发现")
-            .navigationBarTitleDisplayMode(.inline)
+            .padding(.top, 8)
+            .padding(.bottom, 20)
         }
+        .background(Color.chatBackground)
+        .navigationTitle("发现")
+        .weChatNavigation()
+        .alert(feature ?? "", isPresented: Binding(get: { feature != nil }, set: { if !$0 { feature = nil } })) {
+            Button("知道了", role: .cancel) { }
+        } message: { Text("当前版本专注本地聊天与联系人，此入口暂未接入服务。") }
+    }
+
+    private func entry(_ title: String, _ icon: String, _ color: Color) -> some View {
+        Button { feature = title } label: { WeChatRow(title: title, icon: icon, color: color) }
+            .buttonStyle(.plain)
     }
 }
 
 struct MeView: View {
     @Query(filter: #Predicate<Contact> { $0.isMe == true }) private var meList: [Contact]
-    @AppStorage("editMode") private var editMode = false
+    @AppStorage("profileStatus") private var profileStatus = ""
     @State private var showProfile = false
-
+    @State private var showStatus = false
+    @State private var feature: String?
     private var me: Contact? { meList.first }
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Button { showProfile = true } label: {
-                        HStack(spacing: 16) {
-                            AvatarView(contact: me, size: 64)
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(me?.name ?? "我")
-                                    .font(.system(size: 22, weight: .semibold))
-                                    .foregroundStyle(.primary)
-                                Text("微信号：\(me?.handle ?? "wxid_me")")
-                                    .font(.system(size: 14))
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "qrcode").foregroundStyle(.secondary)
-                            Image(systemName: "chevron.right").font(.system(size: 13)).foregroundStyle(.tertiary)
-                        }
-                        .padding(.vertical, 14)
-                    }
+        ScrollView {
+            VStack(spacing: 8) {
+                profile
+                WeChatGroup { entry("服务", "creditcard", .brand) }
+                WeChatGroup {
+                    NavigationLink { FavoritesView() } label: {
+                        WeChatRow(title: "收藏", icon: "cube", color: .orange)
+                    }.buttonStyle(.plain).accessibilityIdentifier("me.favorites")
+                    WeChatSeparator()
+                    entry("朋友圈", "photo", .blue)
+                    WeChatSeparator()
+                    entry("卡包", "wallet.pass", .blue)
+                    WeChatSeparator()
+                    entry("表情", "face.smiling", .orange)
                 }
-                Section { IconRow(icon: "checkmark.shield.fill", color: Color.brand, title: "服务") }
-                Section {
-                    IconRow(icon: "cube.fill", color: .orange, title: "收藏")
-                    IconRow(icon: "photo.on.rectangle", color: .blue, title: "朋友圈")
-                    IconRow(icon: "face.smiling.inverse", color: .yellow, title: "表情")
-                }
-                Section {
-                    Toggle(isOn: $editMode) {
-                        IconRow(icon: "pencil", color: .orange, title: "编辑模式")
-                    }
-                    .tint(Color.brand)
-                } footer: {
-                    Text("开启后，聊天里可以切换用\u{201C}对方\u{201D}身份发送、点消息直接改内容和时间、在 ＋ 面板里模拟对方回复。")
-                }
-                Section {
-                    NavigationLink { ImportGuideView() } label: {
-                        IconRow(icon: "square.and.arrow.down.fill", color: Color.brand, title: "如何导入消息")
-                    }
+                WeChatGroup {
                     NavigationLink { SimulationSettingsView() } label: {
-                        IconRow(icon: "gearshape.fill", color: .blue, title: "设置")
+                        WeChatRow(title: "设置", icon: "gearshape", color: .blue)
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("me.settings")
                 }
             }
-            .toolbar(.hidden, for: .navigationBar)
-            .sheet(isPresented: $showProfile) {
-                if let me { ContactEditView(contact: me) }
+            .padding(.bottom, 24)
+        }
+        .background(Color.chatBackground)
+        .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showProfile) { if let me { ContactEditView(contact: me) } }
+        .confirmationDialog("设置状态", isPresented: $showStatus, titleVisibility: .visible) {
+            ForEach(["忙碌", "工作", "休息", "在线"], id: \.self) { status in
+                Button(status) { profileStatus = status }
+            }
+            Button("清除状态") { profileStatus = "" }
+        }
+        .alert(feature ?? "", isPresented: Binding(get: { feature != nil }, set: { if !$0 { feature = nil } })) {
+            Button("知道了", role: .cancel) { }
+        } message: { Text("此入口暂未接入。聊天、联系人和消息收藏可在本机使用。") }
+    }
+
+    private var profile: some View {
+        HStack(alignment: .top, spacing: 20) {
+            Button { showProfile = true } label: { AvatarView(contact: me, size: 64) }
+                .buttonStyle(.plain)
+                .accessibilityLabel("编辑我的头像")
+            VStack(alignment: .leading, spacing: 10) {
+                Button { showProfile = true } label: {
+                    VStack(alignment: .leading, spacing: 9) {
+                        Text(me?.name ?? "我")
+                            .font(.system(size: 23, weight: .semibold))
+                            .foregroundStyle(.primary)
+                        HStack {
+                            Text("微信号：\(me?.handle ?? "wxid_me")")
+                                .font(.system(size: 14))
+                                .foregroundStyle(.secondary)
+                            Spacer(minLength: 8)
+                            Image(systemName: "qrcode").font(.system(size: 17))
+                            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                }.buttonStyle(.plain)
+                Button { showStatus = true } label: {
+                    Label(profileStatus.isEmpty ? "状态" : profileStatus, systemImage: "plus")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .overlay(Capsule().stroke(Color.secondary.opacity(0.25), lineWidth: 0.5))
+                }
             }
         }
+        .padding(.horizontal, 24)
+        .padding(.top, 42)
+        .padding(.bottom, 36)
+        .background(Color(.systemBackground))
+    }
+
+    private func entry(_ title: String, _ icon: String, _ color: Color) -> some View {
+        Button { feature = title } label: { WeChatRow(title: title, icon: icon, color: color) }
+            .buttonStyle(.plain)
     }
 }
 

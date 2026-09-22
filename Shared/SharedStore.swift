@@ -21,6 +21,11 @@ enum SharedStore {
     /// App 和分享扩展共用同一个数据库文件（放在 App Group 容器里）
     static func makeContainer() -> ModelContainer {
         let config: ModelConfiguration
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-ui-testing") {
+            return try! ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)])
+        }
+        #endif
         if let base = AppGroup.containerURL {
             config = ModelConfiguration(schema: schema, url: base.appending(path: "QingLiao.store"))
         } else {

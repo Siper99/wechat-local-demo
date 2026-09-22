@@ -5,9 +5,15 @@ struct SimulationSettingsView: View {
 
     var body: some View {
         List {
+            Section {
+                NavigationLink { ImportGuideView() } label: {
+                    Label("如何导入消息", systemImage: "square.and.arrow.down")
+                }
+            }
             Section("聊天仿真") {
                 Toggle("编辑模式", isOn: $editMode)
                     .tint(Color.brand)
+                    .accessibilityIdentifier("settings.editMode")
                 Text("开启后可切换双方身份发送消息，点击消息修改内容、时间和发送方，也可以在 ＋ 面板安排延迟回复。关闭后恢复普通聊天展示。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -21,13 +27,13 @@ struct SimulationSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Section("当前功能范围") {
-                Text("已实现：文字和图片聊天、联系人、头像昵称、消息编辑、延迟回复、未读和置顶。")
+                Text("已实现：文字和图片聊天、搜索、转发、引用、收藏、多选删除、联系人、头像昵称、消息编辑、延迟回复、未读和置顶。")
                 Text("朋友圈、视频号、服务等入口目前为界面展示；语音、视频通话、支付和联网聊天尚未实现。")
                     .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("设置")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.visible, for: .navigationBar)
+        .listStyle(.grouped)
+        .weChatNavigation()
     }
 }
