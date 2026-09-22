@@ -41,6 +41,23 @@ final class ChatFlowTests: XCTestCase {
         capture("05-settings")
     }
 
+    func testDraftSurvivesReturningToList() {
+        app.staticTexts["林小雨"].tap()
+        let input = app.descendants(matching: .any).matching(identifier: "chat.input").firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText("Draft to resume")
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["[草稿]"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Draft to resume"].exists)
+        app.staticTexts["林小雨"].tap()
+        XCTAssertEqual(input.value as? String, "Draft to resume")
+        app.buttons["chat.send"].tap()
+        XCTAssertTrue(app.staticTexts["Draft to resume"].waitForExistence(timeout: 3))
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertFalse(app.staticTexts["[草稿]"].exists)
+    }
+
     func testComposeQuoteFavoriteAndPanels() {
         app.staticTexts["林小雨"].tap()
         let input = app.descendants(matching: .any).matching(identifier: "chat.input").firstMatch

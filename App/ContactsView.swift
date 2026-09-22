@@ -34,7 +34,17 @@ struct ContactsView: View {
                     Button { feature = "公众号" } label: { IconRow(icon: "person.crop.square", color: .blue, title: "公众号") }.buttonStyle(.plain)
                 }
                 ForEach(sections, id: \.letter) { section in
-                    Section(section.letter) {
+                    Text(section.letter)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(height: 24)
+                        .environment(\.defaultMinListRowHeight, 24)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.chatBackground)
+                        .listRowSeparator(.hidden)
+                        .id(section.letter)
                         ForEach(section.contacts) { contact in
                             ZStack {
                                 NavigationLink(value: contact) { EmptyView() }.opacity(0)
@@ -42,9 +52,10 @@ struct ContactsView: View {
                                     AvatarView(contact: contact, size: 40)
                                     Text(contact.name).font(.system(size: 17))
                                 }
-                                .padding(.vertical, 8)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
+                            .frame(height: 56)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                             .swipeActions {
                                 Button("删除", role: .destructive) {
                                     context.delete(contact)
@@ -52,8 +63,6 @@ struct ContactsView: View {
                                 }
                             }
                         }
-                    }
-                    .id(section.letter)
                 }
                 Section {
                     Text("\(contacts.count) 个朋友")

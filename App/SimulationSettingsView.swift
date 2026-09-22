@@ -25,6 +25,7 @@ struct SimulationSettingsView: View {
                 Text("用于本地演示，不是腾讯官方微信，不连接微信账号或服务器。对话与人物均可自行编辑，消息保存在本机。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                NavigationLink("开源许可") { OpenSourceNoticesView() }
             }
             Section("当前功能范围") {
                 Text("已实现：文字和图片聊天、搜索、转发、引用、收藏、多选删除、联系人、头像昵称、消息编辑、延迟回复、未读和置顶。")
@@ -35,5 +36,17 @@ struct SimulationSettingsView: View {
         .navigationTitle("设置")
         .listStyle(.grouped)
         .weChatNavigation()
+    }
+}
+
+struct OpenSourceNoticesView: View {
+    private var notices: String {
+        guard let url = Bundle.main.url(forResource: "ThirdPartyNotices", withExtension: "txt"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else { return "许可文件暂不可用" }
+        return text
+    }
+    var body: some View {
+        ScrollView { Text(notices).font(.system(size: 12)).textSelection(.enabled).padding(20) }
+            .navigationTitle("开源许可").weChatNavigation()
     }
 }

@@ -13,6 +13,6 @@
 - Source: https://github.com/alexiscn/WeChatSwift
 - Author: alexiscn.
 - License: MIT, reproduced in `ThirdParty/WeChatSwift-LICENSE.txt`.
-- Referenced: `SessionCellNode` (48 pt avatars, 72 pt rows, 16 pt leading inset), `ChatInputPanelNode`, and `DiscoverViewController`. No Texture, database, or networking dependencies were imported.
+- Referenced: `SessionCellNode` (48 pt avatars, 72 pt rows, 16 pt leading inset), and `DiscoverViewController`. No Texture, database, or networking dependencies were imported.
 
 The upstream WeChatSwift README separately attributes WeChat artwork and product design to WeChat/Tencent and says not to use those resources in commercial applications. Repository code licenses do not grant ownership of those third-party trademarks or artwork. This repository remains a local simulation prototype, not an official WeChat client.

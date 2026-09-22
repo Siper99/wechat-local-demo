@@ -103,9 +103,6 @@ struct ConversationRow: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
-                    if !conversation.draft.isEmpty {
-                        Text("[草稿]").foregroundStyle(.red).font(.system(size: 14))
-                    }
                     Text(conversation.title)
                         .font(.system(size: 17))
                         .lineLimit(1)
@@ -115,6 +112,9 @@ struct ConversationRow: View {
                         .foregroundStyle(.tertiary)
                 }
                 HStack {
+                    if !conversation.draft.isEmpty {
+                        Text("[草稿]").foregroundStyle(.red).font(.system(size: 14))
+                    }
                     Text(previewText)
                         .font(.system(size: 14))
                         .foregroundStyle(.secondary)

@@ -12,7 +12,7 @@ GitHub Actions 的 macOS 环境编译，Windows 的 AltServer 和 iPhone 的 Alt
 
 1. 从下面的构建页面下载最新成功构建的 Artifacts，解压得到 IPA，保存到 iPhone 的“文件”App。
 2. 在你已配置好的 SideStore 中点 My Apps 左上角的 ＋，选择新版 IPA 重新安装；连接条件沿用你当前的 SideStore 配置。
-3. 本次版本为 1.0.1（构建 2），安装名称是 `WeChat`，微信图标不变。不要再次选择旧的中文名称 IPA。
+3. 本次版本为 1.1.0（构建 3），安装名称是 `WeChat`，微信图标不变。不要再次选择旧的中文名称 IPA。
 
 旧版报错 `An invalid value '微信' was provided for the parameter 'appIdName'`，与 SideStore 的[中文名称兼容问题](https://github.com/SideStore/SideStore/issues/1489)一致。新版把 IPA 内部的 `CFBundleDisplayName` 改为英文；只改 IPA 文件名没有作用。
 
