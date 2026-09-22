@@ -2,7 +2,7 @@
 
 ## 推荐方案
 
-GitHub Actions 的 macOS 环境编译，Windows 的 AltServer 和 iPhone 的 AltStore Classic 完成个人签名安装。不需要拥有 Mac，不需要越狱。首次云端构建已成功，IPA 已生成；尚未完成真机签名安装验证。
+GitHub Actions 的 macOS 环境编译，使用你已安装的 SideStore 签名更新即可。不需要拥有 Mac。下文也保留尚未安装签名工具时的 Windows / AltStore Classic 方案。新版已完成云端编译与模拟器验证，尚未在实体 iPhone 上验证本轮更新。
 
 需要 iOS 17+ 的 iPhone、Windows 电脑、数据线、GitHub 账号和自己的 Apple 账号。
 
