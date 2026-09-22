@@ -244,7 +244,9 @@ struct PhotoSendSheet: View {
                 EmptyView()
             }
             .photosPickerStyle(.inline)
-            .photosPickerDisabledCapabilities(.selectionActions)
+            // 去掉系统选图器自带的分段、搜索、添加按钮和底部工具栏，只保留照片网格
+            .photosPickerDisabledCapabilities([.selectionActions, .search, .collectionNavigation, .stagingArea])
+            .photosPickerAccessoryVisibility(.hidden, edges: .all)
             .navigationTitle("最近项目")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color(.systemBackground), for: .navigationBar)
