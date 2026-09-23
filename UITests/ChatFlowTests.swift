@@ -355,8 +355,9 @@ final class ChatFlowTests: XCTestCase {
         // 侧滑返回后再进入其他入口，不能卡住（之前改写系统返回手势会导致卡死）
         app.buttons["contacts.entry.服务号"].tap()
         XCTAssertTrue(app.navigationBars["服务号"].waitForExistence(timeout: 3))
-        let edge = app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5))
-        edge.press(forDuration: 0.05, thenDragTo: edge.withOffset(CGVector(dx: 300, dy: 0)))
+        let edge = app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5))
+        edge.press(forDuration: 0.05, thenDragTo: edge.withOffset(CGVector(dx: 330, dy: 0)),
+                   withVelocity: .fast, thenHoldForDuration: 0)
         XCTAssertTrue(app.buttons["contacts.entry.新的朋友"].waitForExistence(timeout: 3))
         app.buttons["contacts.entry.仅聊天的朋友"].tap()
         XCTAssertTrue(app.navigationBars["仅聊天的朋友"].waitForExistence(timeout: 3))
