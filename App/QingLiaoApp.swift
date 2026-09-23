@@ -41,7 +41,7 @@ struct RootView: View {
                 Group {
                     switch selectedTab {
                     case .chats: ConversationListView { path.append($0) }
-                    case .contacts: ContactsView()
+                    case .contacts: ContactsView(open: { path.append($0) }, openContact: { path.append($0) })
                     case .discover: DiscoverView()
                     case .me: MeView()
                     }
@@ -52,6 +52,7 @@ struct RootView: View {
             .background(selectedTab == .me ? Color.cellBackground : Color.chatBackground)
             .navigationDestination(for: Conversation.self) { ChatView(conversation: $0) }
             .navigationDestination(for: Contact.self) { ContactDetailView(contact: $0) }
+            .navigationDestination(for: ContactRoute.self) { $0.destination }
         }
         .onReceive(NotificationCenter.default.publisher(for: .popToRoot)) { _ in path = NavigationPath() }
         .tint(.primary)

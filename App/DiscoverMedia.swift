@@ -121,6 +121,7 @@ struct ChannelsView: View {
     var body: some View {
         ChannelsFeed(videos: videos, startID: nil, onClose: { dismiss() }, onAdd: { showImport = true })
             .toolbar(.hidden, for: .navigationBar)
+            .edgeSwipeBack()
             .sheet(isPresented: $showImport) { VideoImportSheet() }
     }
 }

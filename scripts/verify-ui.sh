@@ -2,7 +2,16 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 xcodegen generate --spec project-personal.yml
-simulator_id="$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); phones=[x for group in d["devices"].values() for x in group if "iPhone" in x["name"]]; print(next((x["udid"] for x in phones if x["name"] == "iPhone 16"), phones[0]["udid"]))')"
+# SIM_RUNTIME 可限定系统版本（如 iOS-26），默认任意；优先 iPhone 16，其次 iPhone 17
+simulator_id="$(xcrun simctl list devices available -j | SIM_RUNTIME="${SIM_RUNTIME:-}" python3 -c '
+import json, os, sys
+d = json.load(sys.stdin)
+want = os.environ["SIM_RUNTIME"]
+phones = [x for key, group in d["devices"].items() if want in key for x in group if "iPhone" in x["name"]]
+pick = next((x for x in phones if x["name"] == "iPhone 16"), None) or next((x for x in phones if x["name"] == "iPhone 17"), None) or phones[0]
+print(pick["udid"])
+')"
+xcrun simctl list devices | grep "$simulator_id" || true
 xcrun simctl boot "$simulator_id" || true
 xcrun simctl bootstatus "$simulator_id" -b
 xcrun simctl ui "$simulator_id" appearance light

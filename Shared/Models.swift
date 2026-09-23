@@ -13,6 +13,19 @@ final class Contact {
     var chatOnly: Bool = false
     var tags: [String] = []
     var createdAt: Date = Date()
+    /// 对方自己设置的昵称；name 是备注名（未设置备注时两者相同）
+    var nickname: String = ""
+    /// 自定义微信号，为空时由 id 生成
+    var wechatID: String = ""
+    var region: String = ""
+    /// 0 未知 1 男 2 女
+    var gender: Int = 0
+    var phone: String = ""
+    var memo: String = ""
+    /// 朋友资料 → 来源，为空时显示默认文案
+    var source: String = ""
+    var starred: Bool = false
+    var blocked: Bool = false
 
     @Relationship(deleteRule: .cascade, inverse: \Conversation.peer)
     var conversations: [Conversation] = []
@@ -27,8 +40,13 @@ final class Contact {
 
     /// 展示用的"微信号"
     var handle: String {
-        isMe ? "wxid_me" : "wxid_" + id.uuidString.prefix(8).lowercased()
+        if !wechatID.isEmpty { return wechatID }
+        return isMe ? "wxid_me" : "wxid_" + id.uuidString.prefix(8).lowercased()
     }
+
+    /// 资料页里称呼对方：她 / 他
+    var pronoun: String { gender == 2 ? "她" : "他" }
+    var sourceText: String { source.isEmpty ? "对方通过搜索账号添加" : source }
 }
 
 @Model
@@ -42,6 +60,10 @@ final class Conversation {
     var createdAt: Date = Date()
     var isGroup: Bool = false
     var groupName: String = ""
+    /// 聊天详情 → 提醒
+    var remind: Bool = false
+    /// 聊天详情 → 设置当前聊天背景（为空时用全局背景）
+    @Attribute(.externalStorage) var backgroundData: Data?
     @Relationship(deleteRule: .nullify, inverse: \Contact.groups)
     var members: [Contact] = []
 
@@ -344,4 +366,6 @@ enum LocalFiles {
 
     static var chatBackground: URL { directory("Appearance").appending(path: "chat_background.jpg") }
     static var momentsCover: URL { directory("Appearance").appending(path: "moments_cover.jpg") }
+    /// 朋友资料 → 照片（每位联系人一个目录）
+    static func contactPhotos(_ id: UUID) -> URL { directory("ContactPhotos/" + id.uuidString) }
 }

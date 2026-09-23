@@ -51,6 +51,7 @@ struct MomentsView: View {
             topBar
         }
         .toolbar(.hidden, for: .navigationBar)
+        .edgeSwipeBack()
         .safeAreaInset(edge: .bottom) { if commentTarget != nil { commentBar } }
         .sheet(isPresented: $showCompose) { MomentComposeView() }
         .fullScreenCover(item: $viewerImage) { ImageViewer(image: $0.image) }

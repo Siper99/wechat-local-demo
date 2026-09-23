@@ -212,6 +212,7 @@ struct CallBubble: View {
 // MARK: - 选择名片
 
 struct CardPickerSheet: View {
+    var title = "选择名片"
     var onPick: (Contact) -> Void
     @Environment(\.dismiss) private var dismiss
     @Query(filter: #Predicate<Contact> { $0.isMe == false && $0.isSystem == false }, sort: \Contact.name)
@@ -228,7 +229,7 @@ struct CardPickerSheet: View {
                 }
             }
             .listStyle(.plain)
-            .navigationTitle("选择名片")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } } }
         }

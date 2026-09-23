@@ -197,41 +197,42 @@ enum WeChatAppearance {
     }
 }
 
-/// 隐藏系统返回按钮后仍保留边缘右滑返回
-extension UINavigationController: UIGestureRecognizerDelegate {
-    override open func viewDidLoad() {
-        super.viewDidLoad()
-        interactivePopGestureRecognizer?.delegate = self
-    }
+/// 隐藏导航栏的全屏页面（朋友圈、视频号、查找聊天内容）没有系统侧滑返回，用左边缘拖动代替。
+/// 不再改写 UINavigationController 的手势代理：那样做在 iOS 17/26 上会让返回后再进入页面时界面卡死。
+struct EdgeSwipeBack: ViewModifier {
+    @Environment(\.dismiss) private var dismiss
 
-    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        viewControllers.count > 1
+    func body(content: Content) -> some View {
+        content.overlay(alignment: .leading) {
+            Color.clear
+                .frame(width: 16)
+                .contentShape(Rectangle())
+                .gesture(DragGesture(minimumDistance: 10).onEnded { value in
+                    if value.translation.width > 70 && abs(value.translation.height) < 80 { dismiss() }
+                })
+        }
     }
 }
 
-/// 聊天页左上角：返回箭头 + 其他会话未读数（灰色圆角）
-struct WeChatBackButton: View {
-    let unread: Int
-    @Environment(\.dismiss) private var dismiss
+extension View {
+    func edgeSwipeBack() -> some View { modifier(EdgeSwipeBack()) }
+}
+
+/// 聊天页返回箭头旁的其他会话未读数（灰色圆角）
+struct UnreadBadge: View {
+    let count: Int
 
     var body: some View {
-        Button { dismiss() } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .medium))
-                if unread > 0 {
-                    Text(unread > 99 ? "99+" : "\(unread)")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.primary)
-                        .padding(.horizontal, 7)
-                        .frame(minWidth: 24, minHeight: 24)
-                        .background(Capsule().fill(Color.dynamic(0xD6D6D6, 0x3A3A3A)))
-                }
-            }
-            .foregroundStyle(.primary)
+        if count > 0 {
+            Text(count > 99 ? "99+" : "\(count)")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 7)
+                .frame(minWidth: 24, minHeight: 24)
+                .background(Capsule().fill(Color.dynamic(0xD6D6D6, 0x3A3A3A)))
+                .accessibilityLabel("\(count) 条未读")
+                .accessibilityIdentifier("chat.unread")
         }
-        .accessibilityLabel(unread > 0 ? "返回，\(unread) 条未读" : "返回")
-        .accessibilityIdentifier("nav.back")
     }
 }
 

@@ -45,6 +45,9 @@ struct ChatView: View {
     @State private var showCallChoice = false
     @State private var callRequest: CallRequest?
     @State private var openedCard: Contact?
+    /// 查找聊天内容选中的消息：滚动过去并短暂高亮
+    @State private var jumpTarget: UUID?
+    @State private var highlightID: UUID?
     /// 群聊编辑模式：由哪位成员发送（nil 为自己）
     @State private var groupSender: UUID?
     @FocusState private var inputFocused: Bool
@@ -84,10 +87,9 @@ struct ChatView: View {
         .navigationTitle(isSelecting ? "已选择 \(selectedIDs.count) 条" : peerTyping ? "对方正在输入..." : conversation.displayTitle)
         .weChatNavigation()
         .toolbar(.hidden, for: .tabBar)
-        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                WeChatBackButton(unread: otherUnread)
+                UnreadBadge(count: isSelecting ? 0 : otherUnread)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 if isSelecting {
@@ -119,7 +121,12 @@ struct ChatView: View {
         .sheet(item: $editingMessage) { message in
             MessageEditSheet(message: message) { deleteFromSheet(message) }
         }
-        .navigationDestination(isPresented: $showSettings) { ConversationSettingsView(conversation: conversation) }
+        .navigationDestination(isPresented: $showSettings) {
+            ConversationSettingsView(conversation: conversation) { id in
+                showSettings = false
+                jumpTarget = id
+            }
+        }
         .sheet(isPresented: $showSimulate) {
             SimulateReplySheet { text, delay in simulateReply(text: text, delay: delay) }
         }
@@ -130,7 +137,7 @@ struct ChatView: View {
             }
         }
         .sheet(isPresented: $showForward) {
-            NewChatView { target in forward(to: target) }
+            ChatPickerSheet(currentID: conversation.id, preview: forwardPreview) { targets in forward(to: targets) }
         }
         .confirmationDialog("删除选中的 \(selectedIDs.count) 条消息？", isPresented: $confirmDeleteSelection, titleVisibility: .visible) {
             Button("删除", role: .destructive) {
@@ -152,7 +159,8 @@ struct ChatView: View {
     /// 设置 → 聊天 → 聊天背景
     @ViewBuilder private var chatBackground: some View {
         let _ = backgroundVersion
-        if let data = try? Data(contentsOf: LocalFiles.chatBackground), let image = UIImage(data: data) {
+        if let data = conversation.backgroundData ?? (try? Data(contentsOf: LocalFiles.chatBackground)),
+           let image = UIImage(data: data) {
             Color.chatBackground.overlay(Image(uiImage: image).resizable().scaledToFill()).clipped()
         } else {
             Color.chatBackground
@@ -203,6 +211,10 @@ struct ChatView: View {
                             onFavorite: { message.isFavorite.toggle(); try? context.save(); showToast(message.isFavorite ? "已收藏" : "已取消收藏") },
                             onSelect: { inputFocused = false; panel = .none; isSelecting = true; selectedIDs = [message.id] },
                             onTapCard: { openedCard = $0 },
+                            onTapAvatar: {
+                                inputFocused = false
+                                openedCard = message.fromMe ? meList.first : sender(of: message)
+                            },
                             onAddSticker: {
                                 context.insert(Sticker(data: message.imageData))
                                 try? context.save()
@@ -212,6 +224,7 @@ struct ChatView: View {
                             .allowsHitTesting(!isSelecting)
                         }
                         .contentShape(Rectangle())
+                        .background(highlightID == message.id ? Color.brand.opacity(0.12) : Color.clear)
                         .onTapGesture {
                             if isSelecting {
                                 if selectedIDs.contains(message.id) { selectedIDs.remove(message.id) }
@@ -251,6 +264,17 @@ struct ChatView: View {
                 withAnimation(.easeOut(duration: 0.2)) { panel = .none }
             })
             .onChange(of: messages.count) { scrollToBottom(proxy, messages) }
+            .onChange(of: jumpTarget) { _, target in
+                guard let target else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo(target, anchor: .center) }
+                    highlightID = target
+                    jumpTarget = nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        withAnimation { highlightID = nil }
+                    }
+                }
+            }
             .onChange(of: inputFocused) { _, focused in
                 if focused {
                     panel = .none
@@ -470,18 +494,24 @@ struct ChatView: View {
         .background(Color.inputBar.ignoresSafeArea(edges: .bottom))
     }
 
-    private func forward(to target: Conversation) {
-        for message in forwardMessages {
-            let copy = context.addMessage(to: target, kind: message.kind, text: message.text, imageData: message.imageData, fromMe: true)
-            copy.quotedText = message.quotedText
-            copy.quotedSender = message.quotedSender
-            copy.locationAddress = message.locationAddress
-            copy.audioData = message.audioData
-            copy.duration = message.duration
-            copy.cardContactID = message.cardContactID
-            copy.isVideoCall = message.isVideoCall
-            copy.latitude = message.latitude
-            copy.longitude = message.longitude
+    private var forwardPreview: String {
+        forwardMessages.count == 1 ? forwardMessages[0].preview : "[逐条转发] 共\(forwardMessages.count)条消息"
+    }
+
+    private func forward(to targets: [Conversation]) {
+        for target in targets {
+            for message in forwardMessages {
+                let copy = context.addMessage(to: target, kind: message.kind, text: message.text, imageData: message.imageData, fromMe: true)
+                copy.quotedText = message.quotedText
+                copy.quotedSender = message.quotedSender
+                copy.locationAddress = message.locationAddress
+                copy.audioData = message.audioData
+                copy.duration = message.duration
+                copy.cardContactID = message.cardContactID
+                copy.isVideoCall = message.isVideoCall
+                copy.latitude = message.latitude
+                copy.longitude = message.longitude
+            }
         }
         try? context.save()
         forwardMessages = []

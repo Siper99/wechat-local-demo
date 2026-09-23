@@ -21,6 +21,11 @@ enum SeedData {
         let mom = Contact(name: "妈妈")
         let ajie = Contact(name: "阿杰")
         let chen = Contact(name: "陈经理")
+        // 资料页示例：昵称、微信号、地区、性别、来源
+        xiaoyu.nickname = "小雨ovo"; xiaoyu.wechatID = "lin_xiaoyu"; xiaoyu.region = "浙江 杭州"; xiaoyu.gender = 2
+        mom.wechatID = "mama1968"; mom.region = "江苏 苏州"; mom.gender = 2; mom.source = "通过手机号添加"
+        ajie.nickname = "Jay"; ajie.wechatID = "ajie_run"; ajie.region = "上海 浦东新区"; ajie.gender = 1
+        chen.wechatID = "chen_pm"; chen.region = "北京 朝阳"; chen.gender = 1; chen.source = "通过名片分享添加"
         [xiaoyu, mom, ajie, chen].forEach { context.insert($0) }
 
         let c1 = context.conversation(with: xiaoyu)

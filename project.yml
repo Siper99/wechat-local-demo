@@ -10,8 +10,8 @@ settings:
     SWIFT_VERSION: "5.0"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""          # 在这里填你的 Team ID，或在 Xcode 的 Signing 里选
-    MARKETING_VERSION: "1.4.2"
-    CURRENT_PROJECT_VERSION: "8"
+    MARKETING_VERSION: "1.5.0"
+    CURRENT_PROJECT_VERSION: "9"
     TARGETED_DEVICE_FAMILY: "1"
     QINGLIAO_BUNDLE_ID: com.example.qingliao
     APP_GROUP_IDENTIFIER: group.$(QINGLIAO_BUNDLE_ID)

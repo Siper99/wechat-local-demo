@@ -39,3 +39,42 @@ jobs:
           path: build/ui-screenshots
           if-no-files-found: warn
           retention-days: 7
+
+  # 真机多为 iOS 26：在 iOS 26 模拟器上再跑一遍同样的界面测试（结果仅供参考，不影响 IPA）
+  ios26:
+    runs-on: macos-15
+    timeout-minutes: 40
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26
+        id: xcode
+        run: |
+          latest="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$latest" ]; then echo "No Xcode 26 on this runner"; echo "found=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          sudo xcode-select -s "$latest"
+          xcodebuild -version
+          xcrun simctl list runtimes
+          echo "found=true" >> "$GITHUB_OUTPUT"
+      - name: Install XcodeGen
+        if: steps.xcode.outputs.found == 'true'
+        run: brew install xcodegen
+      - name: Verify on iOS 26 simulator
+        if: steps.xcode.outputs.found == 'true'
+        env:
+          SIM_RUNTIME: iOS-26
+        run: bash scripts/verify-ui.sh
+      - name: Export UI screenshots
+        if: always() && steps.xcode.outputs.found == 'true'
+        run: |
+          if [ -d build/UI.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/UI.xcresult --output-path build/ui-screenshots
+          fi
+      - name: Upload UI verification
+        if: always() && steps.xcode.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: iPhone-UI-verification-iOS26
+          path: build/ui-screenshots
+          if-no-files-found: warn
+          retention-days: 7

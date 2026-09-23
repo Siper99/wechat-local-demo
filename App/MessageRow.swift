@@ -19,8 +19,20 @@ struct MessageRow: View {
     var onFavorite: () -> Void
     var onSelect: () -> Void
     var onTapCard: (Contact) -> Void = { _ in }
+    /// 点头像查看资料
+    var onTapAvatar: () -> Void = {}
     var onAddSticker: () -> Void = {}
     @State private var showFullText = false
+
+    private func avatarButton(_ avatar: AvatarView) -> some View {
+        avatar
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onTapAvatar)
+            .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel("查看资料")
+            .accessibilityIdentifier(message.fromMe ? "message.myAvatar" : "message.avatar")
+    }
 
     var body: some View {
         if message.kind == .system {
@@ -41,9 +53,9 @@ struct MessageRow: View {
                 if message.fromMe {
                     Spacer(minLength: 56)
                     bubble
-                    AvatarView(contact: me, size: 40)
+                    avatarButton(AvatarView(contact: me, size: 40))
                 } else {
-                    AvatarView(name: peer?.name ?? senderName ?? "?", data: peer?.avatarData, size: 40)
+                    avatarButton(AvatarView(name: peer?.name ?? senderName ?? "?", data: peer?.avatarData, size: 40))
                     if let senderName {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(senderName).font(.system(size: 12)).foregroundStyle(.secondary)
