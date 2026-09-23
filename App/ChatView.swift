@@ -237,6 +237,8 @@ struct ChatView: View {
                 .padding(.horizontal, 12)
                 .padding(.bottom, 10)
             }
+            // 内容从底部开始、增长和键盘弹起时保持贴底（iOS 26 上仅靠 scrollTo 会停在倒数第二条）
+            .defaultScrollAnchor(.bottom)
             .overlay(alignment: .top) {
                 Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 0.5)
             }
