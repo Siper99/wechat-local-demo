@@ -182,6 +182,10 @@ enum WeChatAppearance {
         appearance.backgroundColor = background
         appearance.shadowColor = .clear
         appearance.titleTextAttributes = [.font: UIFont.systemFont(ofSize: 17, weight: .semibold)]
+        // 与微信一致：返回按钮只显示箭头，不显示上一页标题
+        let hidden: [NSAttributedString.Key: Any] = [.foregroundColor: UIColor.clear]
+        appearance.backButtonAppearance.normal.titleTextAttributes = hidden
+        appearance.backButtonAppearance.highlighted.titleTextAttributes = hidden
         let bar = UINavigationBar.appearance()
         bar.standardAppearance = appearance
         bar.scrollEdgeAppearance = appearance

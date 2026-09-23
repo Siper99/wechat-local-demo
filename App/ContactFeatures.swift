@@ -4,14 +4,14 @@ import SwiftData
 extension ModelContext {
     /// 新建群聊并写入一条系统提示
     @discardableResult
-    func createGroup(with members: [Contact], name: String = "") -> Conversation {
+    func createGroup(with members: [Contact], name: String = "", at date: Date = .now) -> Conversation {
         let conversation = Conversation()
         insert(conversation)
         conversation.isGroup = true
         conversation.groupName = name
         conversation.members = members
         let names = members.map(\.name).joined(separator: "、")
-        addMessage(to: conversation, kind: .system, text: "你邀请\(names)加入了群聊", fromMe: true)
+        addMessage(to: conversation, kind: .system, text: "你邀请\(names)加入了群聊", fromMe: true, at: date)
         try? save()
         return conversation
     }

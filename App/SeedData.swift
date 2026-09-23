@@ -55,7 +55,7 @@ enum SeedData {
         context.addMessage(to: c5, text: "照片已同步到电脑", fromMe: true, at: minutesAgo(60 * 3))
 
         // 群聊
-        let group = context.createGroup(with: [xiaoyu, ajie, chen], name: "周末爬山")
+        let group = context.createGroup(with: [xiaoyu, ajie, chen], name: "周末爬山", at: minutesAgo(100))
         let g1 = context.addMessage(to: group, text: "周六早上八点地铁站集合？", fromMe: false, at: minutesAgo(95))
         g1.senderID = ajie.id
         g1.senderName = ajie.name
