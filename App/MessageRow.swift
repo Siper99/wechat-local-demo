@@ -117,11 +117,12 @@ struct MessageRow: View {
     private var textBubble: some View {
         Text(message.text)
             .font(.system(size: 17))
+            .lineSpacing(3)
             .foregroundStyle(message.fromMe ? Color.textOnMe : Color.textOnOther)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 10)
-            .padding(.leading, message.fromMe ? 12 : 12 + BubbleShape.arrowWidth)
-            .padding(.trailing, message.fromMe ? 12 + BubbleShape.arrowWidth : 12)
+            .padding(.leading, message.fromMe ? 12 : 17)
+            .padding(.trailing, message.fromMe ? 15 : 12)
             .frame(minHeight: 40)
             .background(
                 BubbleShape(isMe: message.fromMe)
@@ -182,7 +183,7 @@ struct FullTextView: View {
                 .frame(maxWidth: .infinity, minHeight: 400, alignment: .center)
                 .padding(28)
         }
-        .background(Color(.systemBackground))
+        .background(Color.cellBackground)
         .contentShape(Rectangle())
         .onTapGesture { dismiss() }
         .overlay(alignment: .topTrailing) {

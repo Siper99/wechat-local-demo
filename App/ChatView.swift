@@ -221,7 +221,7 @@ struct ChatView: View {
                         .id(message.id)
                     }
                 }
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 12)
                 .padding(.bottom, 10)
             }
             .overlay(alignment: .top) {

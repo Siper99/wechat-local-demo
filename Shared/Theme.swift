@@ -14,6 +14,16 @@ extension Color {
     static let inputBar = dynamic(0xF7F7F7, 0x1E1E1E)
     static let inputField = dynamic(0xFFFFFF, 0x2C2C2C)
     static let pinnedRow = dynamic(0xEFEFEF, 0x252525)
+    /// WeUI BG-2：单元格白底，深色 #191919
+    static let cellBackground = dynamic(0xFFFFFF, 0x191919)
+    /// WeUI FG-1：次要文字 55% 黑 / 50% 白
+    static let wcSecondary = Color(UIColor { $0.userInterfaceStyle == .dark
+        ? UIColor(white: 1, alpha: 0.5) : UIColor(white: 0, alpha: 0.55) })
+    /// 会话摘要：实机截图实测约 #A0A0A0
+    static let wcPreview = dynamic(0xA0A0A0, 0x7A7A7A)
+    /// WeUI FG-2：时间戳、箭头 30%
+    static let wcTips = Color(UIColor { $0.userInterfaceStyle == .dark
+        ? UIColor(white: 1, alpha: 0.3) : UIColor(white: 0, alpha: 0.3) })
 
     static func dynamic(_ light: UInt32, _ dark: UInt32) -> Color {
         Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })

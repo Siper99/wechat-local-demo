@@ -13,6 +13,7 @@ struct ConversationListView: View {
     @AppStorage("desktopLogin") private var desktopLogin = "Windows"
     @State private var swipedID: UUID?
     @State private var showScan = false
+    @State private var showPlusMenu = false
 
     private var unreadTotal: Int {
         conversations.filter { !$0.muted }.reduce(0) { $0 + $1.unread }
@@ -39,7 +40,7 @@ struct ConversationListView: View {
                                        onTap: { onOpen(conversation) }) {
                             ConversationRow(conversation: conversation)
                                 .padding(.horizontal, 16)
-                                .background(conversation.pinned ? Color.pinnedRow : Color(.systemBackground))
+                                .background(conversation.pinned ? Color.pinnedRow : Color.cellBackground)
                                 .overlay(alignment: .bottom) {
                                     Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 0.5).padding(.leading, 76)
                                 }
@@ -55,12 +56,12 @@ struct ConversationListView: View {
                         }
                     }
                 }
-                .background(Color(.systemBackground))
+                .background(Color.cellBackground)
             }
             .scrollDismissesKeyboard(.interactively)
             .background {
                 // 顶部下拉露出灰色，底部空白为白色
-                VStack(spacing: 0) { Color.chatBackground; Color(.systemBackground) }
+                VStack(spacing: 0) { Color.chatBackground; Color.cellBackground }
             }
             .overlay {
                 if sorted.isEmpty {
@@ -83,17 +84,37 @@ struct ConversationListView: View {
                     .accessibilityLabel("小程序")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button("发起群聊", systemImage: "bubble.left.and.bubble.right") { showNewChat = true }
-                        Button("添加朋友", systemImage: "person.badge.plus") { showAddContact = true }
-                        Button("扫一扫", systemImage: "qrcode.viewfinder") { showScan = true }
-                        Button("收付款", systemImage: "qrcode") { featureNotice = "收付款" }
+                    Button {
+                        withAnimation(.easeOut(duration: 0.15)) { showPlusMenu.toggle() }
                     } label: {
                         Image(systemName: "plus.circle").font(.system(size: 22, weight: .regular))
                     }
                     .accessibilityLabel("添加")
+                    .accessibilityIdentifier("chats.plus")
                 }
             }
+            .overlay(alignment: .topTrailing) {
+                if showPlusMenu {
+                    ZStack(alignment: .topTrailing) {
+                        // 点空白处收起
+                        Color.black.opacity(0.001)
+                            .ignoresSafeArea()
+                            .onTapGesture { withAnimation(.easeOut(duration: 0.15)) { showPlusMenu = false } }
+                        PlusMenu { action in
+                            showPlusMenu = false
+                            switch action {
+                            case .groupChat: showNewChat = true
+                            case .addFriend: showAddContact = true
+                            case .scan: showScan = true
+                            case .pay: featureNotice = "收付款"
+                            }
+                        }
+                        .padding(.trailing, 8)
+                        .transition(.scale(scale: 0.8, anchor: .topTrailing).combined(with: .opacity))
+                    }
+                }
+            }
+            .onDisappear { showPlusMenu = false }
             .sheet(item: $editing) { conversation in
                 NavigationStack { ConversationSettingsView(conversation: conversation) }
             }
@@ -127,7 +148,7 @@ extension ConversationListView {
                     .frame(width: 48)
                 Text("\(desktopLogin) 微信已登录")
                     .font(.system(size: 15))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.dynamic(0x585858, 0xA0A0A0))
                     .padding(.leading, 12)
                 Spacer()
             }
@@ -166,7 +187,7 @@ struct ConversationRow: View {
             ConversationAvatar(conversation: conversation, size: 48)
                 .overlay(alignment: .topTrailing) { badge.offset(x: 6, y: -6) }
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text(conversation.title)
                         .font(.system(size: 17))
@@ -174,7 +195,7 @@ struct ConversationRow: View {
                     Spacer()
                     Text(ChatTime.listLabel(conversation.lastActivity))
                         .font(.system(size: 12))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Color.wcTips)
                 }
                 HStack {
                     if !conversation.draft.isEmpty {
@@ -182,13 +203,14 @@ struct ConversationRow: View {
                     }
                     Text(previewText)
                         .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.wcPreview)
                         .lineLimit(1)
                     Spacer()
                     if conversation.muted {
                         Image(systemName: "bell.slash")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.tertiary)
+                            .font(.system(size: 14))
+                            .frame(width: 15, height: 15)
+                            .foregroundStyle(Color.wcTips)
                     }
                 }
             }
@@ -273,5 +295,64 @@ struct NewChatView: View {
         let conversation = context.conversation(with: contact)
         dismiss()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { onOpen(conversation) }
+    }
+}
+
+// MARK: - 首页右上角 ＋ 菜单（深色浮层，规格参考 WeChatSwift：宽 160、行高 56、16pt 白字）
+
+struct PlusMenu: View {
+    enum Action { case groupChat, addFriend, scan, pay }
+    var onSelect: (Action) -> Void
+
+    private let items: [(Action, String, String)] = [
+        (.groupChat, "发起群聊", "bubble.left.and.bubble.right"),
+        (.addFriend, "添加朋友", "person.badge.plus"),
+        (.scan, "扫一扫", "qrcode.viewfinder"),
+        (.pay, "收付款", "yensign.square"),
+    ]
+
+    private static let background = Color.dynamic(0x4C4C4C, 0x404040)
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 0) {
+            // 指向 ＋ 按钮的小三角
+            Triangle()
+                .fill(Self.background)
+                .frame(width: 14, height: 7)
+                .padding(.trailing, 14)
+            VStack(spacing: 0) {
+                ForEach(items.indices, id: \.self) { index in
+                    let item = items[index]
+                    Button { onSelect(item.0) } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: item.2)
+                                .font(.system(size: 18))
+                                .frame(width: 24)
+                            Text(item.1).font(.system(size: 16))
+                            Spacer(minLength: 0)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.leading, 18)
+                        .frame(width: 160, height: 56)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PlusMenuButtonStyle())
+                    .accessibilityIdentifier("plus.\(item.1)")
+                    .overlay(alignment: .bottom) {
+                        if index < items.count - 1 {
+                            Rectangle().fill(.white.opacity(0.12)).frame(height: 0.5).padding(.leading, 50)
+                        }
+                    }
+                }
+            }
+            .background(Self.background, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+        .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+    }
+}
+
+private struct PlusMenuButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.background(configuration.isPressed ? Color.black.opacity(0.3) : Color.clear)
     }
 }

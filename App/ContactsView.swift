@@ -71,7 +71,7 @@ struct ContactsView: View {
                         .frame(maxWidth: .infinity, alignment: .bottomLeading)
                         .frame(height: 44)
                         .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color(.systemBackground))
+                        .listRowBackground(Color.cellBackground)
                         .listRowSeparator(.hidden)
                         .id(section.letter)
                         ForEach(section.contacts) { contact in
@@ -269,7 +269,7 @@ struct ContactDetailView: View {
         .padding(.horizontal, 24)
         .padding(.top, 16)
         .padding(.bottom, 32)
-        .background(Color(.systemBackground))
+        .background(Color.cellBackground)
     }
 
     private func actionLabel(_ title: String, _ symbol: String) -> some View {
@@ -280,7 +280,7 @@ struct ContactDetailView: View {
         .foregroundStyle(Color.linkBlue)
         .frame(maxWidth: .infinity)
         .frame(height: 56)
-        .background(Color(.systemBackground))
+        .background(Color.cellBackground)
         .contentShape(Rectangle())
     }
 }

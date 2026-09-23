@@ -135,16 +135,17 @@ struct WeChatRow: View {
             }
             Text(title).font(.system(size: 17)).foregroundStyle(.primary)
             Spacer(minLength: 8)
-            if let detail { Text(detail).font(.system(size: 14)).foregroundStyle(.secondary) }
+            if let detail { Text(detail).font(.system(size: 14)).foregroundStyle(Color.wcSecondary) }
             if chevron {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.secondary.opacity(0.5))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.wcTips)
+                    .frame(width: 12, height: 24)
             }
         }
         .padding(.horizontal, 16)
         .frame(minHeight: 56)
-        .background(Color(.systemBackground))
+        .background(Color.cellBackground)
         .contentShape(Rectangle())
     }
 }
@@ -153,7 +154,7 @@ struct WeChatGroup<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
         VStack(spacing: 0) { content }
-            .background(Color(.systemBackground))
+            .background(Color.cellBackground)
     }
 }
 

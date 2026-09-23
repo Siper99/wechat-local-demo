@@ -85,7 +85,7 @@ struct ServicesView: View {
                             }
                         }
                     }
-                    .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .background(Color.cellBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .padding(.horizontal, 8)
                 }
             }
@@ -107,16 +107,57 @@ struct ServicesView: View {
     }
 }
 
+/// 本地演示零钱：金额和明细只保存在本机 UserDefaults，界面始终标注“演示”
+struct WalletRecord: Codable, Identifiable {
+    var id = UUID()
+    var title: String
+    var cents: Int
+    var date: Date
+}
+
+enum DemoWallet {
+    static let balanceKey = "walletBalanceCents"
+    static let recordsKey = "walletRecords"
+
+    static func format(_ cents: Int) -> String {
+        String(format: "%.2f", Double(cents) / 100)
+    }
+
+    static func records() -> [WalletRecord] {
+        guard let data = UserDefaults.standard.data(forKey: recordsKey),
+              let list = try? JSONDecoder().decode([WalletRecord].self, from: data) else { return [] }
+        return list
+    }
+
+    static func append(_ record: WalletRecord) {
+        var list = records()
+        list.insert(record, at: 0)
+        if let data = try? JSONEncoder().encode(Array(list.prefix(200))) {
+            UserDefaults.standard.set(data, forKey: recordsKey)
+        }
+    }
+}
+
 struct WalletView: View {
+    @AppStorage(DemoWallet.balanceKey) private var balanceCents = 0
+
     var body: some View {
         List {
             Section {
-                row("零钱", "yensign.circle", 0xFA9D3B)
+                NavigationLink { ChangeView() } label: {
+                    HStack {
+                        Label { Text("零钱") } icon: { Image(systemName: "yensign.circle").foregroundStyle(Color(hex: 0xFA9D3B)) }
+                        Spacer()
+                        Text("¥" + DemoWallet.format(balanceCents)).foregroundStyle(.secondary)
+                        DemoTag()
+                    }
+                }
+                .accessibilityIdentifier("wallet.change")
                 row("零钱通", "chart.line.uptrend.xyaxis", 0xFFC300)
                 row("银行卡", "creditcard", 0x1485EE)
                 row("亲属卡", "person.2", 0xFA5151)
             } footer: {
-                Text("本地演示不连接任何支付账户，不显示余额、不保存银行卡信息。")
+                Text("零钱为本地演示金额，不连接任何支付账户，不保存银行卡信息。")
             }
             Section {
                 row("支付设置", "gearshape", 0x1485EE)
@@ -132,6 +173,146 @@ struct WalletView: View {
         NavigationLink { UnavailableFeatureView(title: title, symbol: symbol, message: "本地演示不提供支付和资金功能。") } label: {
             Label { Text(title) } icon: { Image(systemName: symbol).foregroundStyle(Color(hex: color)) }
         }
+    }
+}
+
+/// 金额旁的“演示”标记
+struct DemoTag: View {
+    var body: some View {
+        Text("演示")
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(Color(hex: 0xFA9D3B))
+            .padding(.horizontal, 4).padding(.vertical, 1)
+            .overlay(RoundedRectangle(cornerRadius: 3).stroke(Color(hex: 0xFA9D3B), lineWidth: 0.5))
+    }
+}
+
+struct ChangeView: View {
+    @AppStorage(DemoWallet.balanceKey) private var balanceCents = 0
+    @State private var sheet: ChangeAction?
+    @State private var records: [WalletRecord] = DemoWallet.records()
+
+    enum ChangeAction: String, Identifiable {
+        case topUp = "充值", withdraw = "提现"
+        var id: String { rawValue }
+    }
+
+    var body: some View {
+        List {
+            Section {
+                VStack(spacing: 14) {
+                    Image(systemName: "yensign.circle.fill")
+                        .font(.system(size: 56))
+                        .foregroundStyle(Color(hex: 0xFA9D3B))
+                        .padding(.top, 24)
+                    Text("我的零钱").font(.system(size: 17))
+                    Text("¥" + DemoWallet.format(balanceCents))
+                        .font(.system(size: 40, weight: .semibold).monospacedDigit())
+                        .accessibilityIdentifier("change.balance")
+                    Text("本地演示金额，不代表真实资金")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color(hex: 0xFA9D3B))
+                    Button { sheet = .topUp } label: {
+                        Text("充值").font(.system(size: 17, weight: .medium)).foregroundStyle(.white)
+                            .frame(width: 184, height: 40)
+                            .background(Color.brand, in: RoundedRectangle(cornerRadius: 8))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 20)
+                    .accessibilityIdentifier("change.topUp")
+                    Button { sheet = .withdraw } label: {
+                        Text("提现").font(.system(size: 17, weight: .medium)).foregroundStyle(Color.brand)
+                            .frame(width: 184, height: 40)
+                            .background(Color.dynamic(0xF2F2F2, 0x2C2C2C), in: RoundedRectangle(cornerRadius: 8))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.bottom, 24)
+                    .disabled(balanceCents == 0)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            Section("零钱明细") {
+                if records.isEmpty {
+                    Text("暂无明细").foregroundStyle(.secondary)
+                }
+                ForEach(records) { record in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(record.title)
+                            Text(ChatTime.chatLabel(record.date)).font(.system(size: 12)).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Text((record.cents >= 0 ? "+" : "-") + DemoWallet.format(abs(record.cents)))
+                            .foregroundStyle(record.cents >= 0 ? Color(hex: 0xFA9D3B) : .primary)
+                            .monospacedDigit()
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("零钱")
+        .weChatNavigation()
+        .sheet(item: $sheet) { action in
+            AmountSheet(title: action.rawValue, maxCents: action == .withdraw ? balanceCents : nil) { cents in
+                let delta = action == .topUp ? cents : -cents
+                balanceCents = max(0, balanceCents + delta)
+                DemoWallet.append(WalletRecord(title: "零钱\(action.rawValue)（演示）", cents: delta, date: .now))
+                records = DemoWallet.records()
+            }
+        }
+    }
+}
+
+private struct AmountSheet: View {
+    let title: String
+    let maxCents: Int?
+    var onConfirm: (Int) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    private var cents: Int? {
+        guard let value = Decimal(string: text), value > 0 else { return nil }
+        let result = NSDecimalNumber(decimal: value * 100).intValue
+        if let maxCents, result > maxCents { return nil }
+        return result <= 100_000_000 ? result : nil
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("¥").font(.system(size: 30, weight: .medium))
+                        TextField("0.00", text: $text)
+                            .font(.system(size: 36, weight: .medium))
+                            .keyboardType(.decimalPad)
+                            .focused($focused)
+                            .accessibilityIdentifier("amount.field")
+                    }
+                } header: {
+                    Text("\(title)金额")
+                } footer: {
+                    if let maxCents { Text("当前零钱 ¥\(DemoWallet.format(maxCents))。") }
+                    Text("仅修改本地演示金额，不涉及真实资金。")
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("确定") {
+                        if let cents { onConfirm(cents) }
+                        dismiss()
+                    }
+                    .disabled(cents == nil)
+                    .accessibilityIdentifier("amount.confirm")
+                }
+            }
+            .onAppear { focused = true }
+        }
+        .presentationDetents([.medium])
     }
 }
 
@@ -198,7 +379,7 @@ struct FavoritesView: View {
                             .font(.system(size: 14))
                             .foregroundStyle(filter == name ? Color.brand : Color.primary)
                             .padding(.horizontal, 14).frame(height: 30)
-                            .background(Color(.systemBackground), in: Capsule())
+                            .background(Color.cellBackground, in: Capsule())
                     }
                 }
                 .padding(.horizontal, 12)
@@ -218,7 +399,7 @@ struct FavoritesView: View {
             .overlay {
                 if items.isEmpty {
                     ContentUnavailableView("暂无收藏", systemImage: "cube",
-                                           description: Text("长按聊天消息选择收藏，或点右上角 ＋ 新建笔记"))
+                                           description: Text("长按聊天消息选择收藏，或点右上角 ＋ 新建笔记")).allowsHitTesting(false)
                 }
             }
         }
@@ -261,7 +442,7 @@ struct FavoritesView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
-            .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8))
+            .background(Color.cellBackground, in: RoundedRectangle(cornerRadius: 8))
             .swipeActions {
                 Button("删除", role: .destructive) {
                     message.isFavorite = false
@@ -280,7 +461,7 @@ struct FavoritesView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
-            .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8))
+            .background(Color.cellBackground, in: RoundedRectangle(cornerRadius: 8))
             .contentShape(Rectangle())
             .onTapGesture { editingNote = note }
             .swipeActions {
@@ -311,7 +492,7 @@ struct NoteEditorView: View {
             .focused($focused)
             .padding(.horizontal, 12)
             .scrollContentBackground(.hidden)
-            .background(Color(.systemBackground))
+            .background(Color.cellBackground)
             .navigationTitle("笔记")
             .weChatNavigation()
             .accessibilityIdentifier("note.editor")
@@ -358,7 +539,7 @@ struct WorksView: View {
                 }
             }
         }
-        .background(Color(.systemBackground))
+        .background(Color.cellBackground)
         .navigationTitle("作品")
         .weChatNavigation()
         .toolbar {
@@ -524,7 +705,7 @@ struct StickersView: View {
                 .padding(.horizontal, 16)
             }
         }
-        .background(Color(.systemBackground))
+        .background(Color.cellBackground)
         .navigationTitle("我的表情")
         .weChatNavigation()
         .toolbar {
@@ -586,7 +767,7 @@ struct MyQRCodeView: View {
                 Text("扫一扫上面的二维码图案，加我为朋友").font(.system(size: 13)).foregroundStyle(.secondary)
             }
             .padding(24)
-            .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8))
+            .background(Color.cellBackground, in: RoundedRectangle(cornerRadius: 8))
             .padding(24)
             Spacer()
         }

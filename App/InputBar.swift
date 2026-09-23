@@ -337,7 +337,7 @@ struct PhotoSendSheet: View {
             .photosPickerAccessoryVisibility(.hidden, edges: .all)
             .navigationTitle("最近项目")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color(.systemBackground), for: .navigationBar)
+            .toolbarBackground(Color.cellBackground, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

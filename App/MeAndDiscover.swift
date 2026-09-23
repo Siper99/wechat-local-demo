@@ -152,7 +152,7 @@ struct MeView: View {
         .padding(.trailing, 16)
         .padding(.top, 62)
         .padding(.bottom, 32)
-        .background(Color(.systemBackground))
+        .background(Color.cellBackground)
     }
 
     private func link<Destination: View>(_ title: String, _ icon: String, _ color: Color, id: String,

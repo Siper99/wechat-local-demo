@@ -188,7 +188,7 @@ struct TopStoriesView: View {
         .overlay {
             if shown.isEmpty {
                 ContentUnavailableView(tab == "精选" ? "暂无文章" : "还没有\u{201C}在看\u{201D}的文章", systemImage: "doc.text",
-                                       description: Text(tab == "精选" ? "关注的公众号发布文章后会显示在这里" : "在文章底部点\u{201C}在看\u{201D}"))
+                                       description: Text(tab == "精选" ? "关注的公众号发布文章后会显示在这里" : "在文章底部点\u{201C}在看\u{201D}")).allowsHitTesting(false)
             }
         }
         .navigationTitle("看一看")
@@ -237,7 +237,7 @@ struct ArticleView: View {
             }
             .padding(20)
         }
-        .background(Color(.systemBackground))
+        .background(Color.cellBackground)
         .safeAreaInset(edge: .bottom) {
             HStack {
                 ShareLink(item: article.title + "\n\n" + article.body) {
@@ -749,7 +749,7 @@ struct NotesListView: View {
                 try? context.save()
             }
         }
-        .overlay { if notes.isEmpty { ContentUnavailableView("暂无笔记", systemImage: "note.text") } }
+        .overlay { if notes.isEmpty { ContentUnavailableView("暂无笔记", systemImage: "note.text").allowsHitTesting(false) } }
         .navigationTitle("记事本")
         .weChatNavigation()
         .toolbar {
@@ -807,7 +807,7 @@ struct CalculatorView: View {
             }
         }
         .padding(16)
-        .background(Color(.systemBackground))
+        .background(Color.cellBackground)
         .navigationTitle("计算器")
         .weChatNavigation()
     }

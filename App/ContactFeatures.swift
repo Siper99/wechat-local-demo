@@ -38,6 +38,15 @@ struct NewFriendsView: View {
                 }
             }
             Section(requests.isEmpty ? "" : "近三天") {
+                // 空状态放在列表里而不是 overlay，避免盖住上面的“添加朋友”导致点击无反应
+                if requests.isEmpty {
+                    Text("暂无好友申请")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                        .accessibilityIdentifier("newFriends.empty")
+                }
                 ForEach(requests) { request in
                     HStack(spacing: 12) {
                         AvatarView(name: request.name, data: nil, size: 44)
@@ -68,7 +77,6 @@ struct NewFriendsView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .overlay { if requests.isEmpty { ContentUnavailableView("暂无好友申请", systemImage: "person.crop.circle.badge.plus") } }
         .navigationTitle("新的朋友")
         .weChatNavigation()
         .sheet(isPresented: $showAdd) { ContactEditView() }
@@ -136,7 +144,7 @@ struct ChatOnlyFriendsView: View {
         .overlay {
             if contacts.isEmpty {
                 ContentUnavailableView("暂无仅聊天的朋友", systemImage: "person.bubble",
-                                       description: Text("在好友资料页 → 朋友权限中设为\u{201C}仅聊天\u{201D}"))
+                                       description: Text("在好友资料页 → 朋友权限中设为\u{201C}仅聊天\u{201D}")).allowsHitTesting(false)
             }
         }
         .navigationTitle("仅聊天的朋友")
@@ -222,7 +230,7 @@ struct TagsView: View {
         .listStyle(.plain)
         .overlay {
             if tags.isEmpty {
-                ContentUnavailableView("暂无标签", systemImage: "tag", description: Text("点右上角新建标签并选择成员"))
+                ContentUnavailableView("暂无标签", systemImage: "tag", description: Text("点右上角新建标签并选择成员")).allowsHitTesting(false)
             }
         }
         .navigationTitle("标签")
@@ -307,7 +315,7 @@ struct OfficialAccountsView: View {
         }
         .listStyle(.plain)
         .overlay {
-            if shown.isEmpty { ContentUnavailableView(isService ? "暂无服务号" : "暂无公众号", systemImage: "book") }
+            if shown.isEmpty { ContentUnavailableView(isService ? "暂无服务号" : "暂无公众号", systemImage: "book").allowsHitTesting(false) }
         }
         .navigationTitle(isService ? "服务号" : "公众号")
         .weChatNavigation()

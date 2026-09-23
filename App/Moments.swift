@@ -111,7 +111,7 @@ struct MomentsView: View {
             }
         }
         .coordinateSpace(name: "moments")
-        .background(Color(.systemBackground))
+        .background(Color.cellBackground)
         .scrollDismissesKeyboard(.interactively)
         .onPreferenceChange(HeaderOffsetKey.self) { headerMinY = $0 }
     }

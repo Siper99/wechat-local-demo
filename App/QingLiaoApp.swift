@@ -49,7 +49,7 @@ struct RootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 WeChatTabBar(selection: $selectedTab, unread: unreadTotal)
             }
-            .background(selectedTab == .me ? Color(.systemBackground) : Color.chatBackground)
+            .background(selectedTab == .me ? Color.cellBackground : Color.chatBackground)
             .navigationDestination(for: Conversation.self) { ChatView(conversation: $0) }
             .navigationDestination(for: Contact.self) { ContactDetailView(contact: $0) }
         }
