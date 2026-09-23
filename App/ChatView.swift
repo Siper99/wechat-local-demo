@@ -180,55 +180,58 @@ struct ChatView: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
-                        if index == 0 || message.sentAt.timeIntervalSince(messages[index - 1].sentAt) > 300 {
-                            Text(ChatTime.chatLabel(message.sentAt))
-                                .font(.system(size: 13))
-                                .foregroundStyle(.secondary)
-                                .padding(.top, 14)
-                                .padding(.bottom, 4)
-                        }
-                        HStack(spacing: 8) {
-                            if isSelecting {
-                                Image(systemName: selectedIDs.contains(message.id) ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 23))
-                                    .foregroundStyle(selectedIDs.contains(message.id) ? Color.brand : Color.secondary)
+                        // 每条消息（含时间标签）作为一个整体，懒加载列表才能按 id 定位到尚未渲染的行
+                        VStack(spacing: 0) {
+                            if index == 0 || message.sentAt.timeIntervalSince(messages[index - 1].sentAt) > 300 {
+                                Text(ChatTime.chatLabel(message.sentAt))
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top, 14)
+                                    .padding(.bottom, 4)
                             }
-                            MessageRow(
-                            message: message,
-                            me: meList.first,
-                            peer: sender(of: message),
-                            senderName: conversation.isGroup && !message.fromMe ? senderName(of: message) : nil,
-                            cardContact: message.cardContactID.flatMap { id in contacts.first { $0.id == id } },
-                            editMode: editMode,
-                            onEdit: { editingMessage = message },
-                            onCopy: { copy(message) },
-                            onRecall: { recall(message) },
-                            onDelete: { delete(message) },
-                            onToggleSender: { message.fromMe.toggle() },
-                            onTapImage: { viewerImage = ViewerImage(image: $0) },
-                            onForward: { forwardMessages = [message]; showForward = true },
-                            onQuote: { quotedMessage = message; panel = .none; inputFocused = true },
-                            onFavorite: { message.isFavorite.toggle(); try? context.save(); showToast(message.isFavorite ? "已收藏" : "已取消收藏") },
-                            onSelect: { inputFocused = false; panel = .none; isSelecting = true; selectedIDs = [message.id] },
-                            onTapCard: { openedCard = $0 },
-                            onTapAvatar: {
-                                inputFocused = false
-                                openedCard = message.fromMe ? meList.first : sender(of: message)
-                            },
-                            onAddSticker: {
-                                context.insert(Sticker(data: message.imageData))
-                                try? context.save()
-                                showToast("已添加到表情")
+                            HStack(spacing: 8) {
+                                if isSelecting {
+                                    Image(systemName: selectedIDs.contains(message.id) ? "checkmark.circle.fill" : "circle")
+                                        .font(.system(size: 23))
+                                        .foregroundStyle(selectedIDs.contains(message.id) ? Color.brand : Color.secondary)
+                                }
+                                MessageRow(
+                                message: message,
+                                me: meList.first,
+                                peer: sender(of: message),
+                                senderName: conversation.isGroup && !message.fromMe ? senderName(of: message) : nil,
+                                cardContact: message.cardContactID.flatMap { id in contacts.first { $0.id == id } },
+                                editMode: editMode,
+                                onEdit: { editingMessage = message },
+                                onCopy: { copy(message) },
+                                onRecall: { recall(message) },
+                                onDelete: { delete(message) },
+                                onToggleSender: { message.fromMe.toggle() },
+                                onTapImage: { viewerImage = ViewerImage(image: $0) },
+                                onForward: { forwardMessages = [message]; showForward = true },
+                                onQuote: { quotedMessage = message; panel = .none; inputFocused = true },
+                                onFavorite: { message.isFavorite.toggle(); try? context.save(); showToast(message.isFavorite ? "已收藏" : "已取消收藏") },
+                                onSelect: { inputFocused = false; panel = .none; isSelecting = true; selectedIDs = [message.id] },
+                                onTapCard: { openedCard = $0 },
+                                onTapAvatar: {
+                                    inputFocused = false
+                                    openedCard = message.fromMe ? meList.first : sender(of: message)
+                                },
+                                onAddSticker: {
+                                    context.insert(Sticker(data: message.imageData))
+                                    try? context.save()
+                                    showToast("已添加到表情")
+                                }
+                            )
+                                .allowsHitTesting(!isSelecting)
                             }
-                        )
-                            .allowsHitTesting(!isSelecting)
-                        }
-                        .contentShape(Rectangle())
-                        .background(highlightID == message.id ? Color.brand.opacity(0.12) : Color.clear)
-                        .onTapGesture {
-                            if isSelecting {
-                                if selectedIDs.contains(message.id) { selectedIDs.remove(message.id) }
-                                else { selectedIDs.insert(message.id) }
+                            .contentShape(Rectangle())
+                            .background(highlightID == message.id ? Color.brand.opacity(0.12) : Color.clear)
+                            .onTapGesture {
+                                if isSelecting {
+                                    if selectedIDs.contains(message.id) { selectedIDs.remove(message.id) }
+                                    else { selectedIDs.insert(message.id) }
+                                }
                             }
                         }
                         .id(message.id)
