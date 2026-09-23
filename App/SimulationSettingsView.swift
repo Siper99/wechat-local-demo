@@ -41,7 +41,7 @@ struct SimulationSettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("设置")
+        .navigationTitle("仿真与导入")
         .listStyle(.grouped)
         .weChatNavigation()
     }

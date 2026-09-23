@@ -33,10 +33,14 @@ struct ContactsView: View {
         }
     }
 
-    private func entry(_ title: String, _ symbol: String, _ color: UInt32) -> some View {
-        Button { feature = title } label: { ContactEntryRow(title: title, symbol: symbol, color: color) }
-            .buttonStyle(.plain)
-            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+    private func entry<Destination: View>(_ title: String, _ symbol: String, _ color: UInt32,
+                                          @ViewBuilder destination: () -> Destination) -> some View {
+        ZStack {
+            NavigationLink { destination() } label: { EmptyView() }.opacity(0)
+            ContactEntryRow(title: title, symbol: symbol, color: color)
+        }
+        .accessibilityIdentifier("contacts.entry.\(title)")
+        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
     }
 
     var body: some View {
@@ -47,15 +51,16 @@ struct ContactsView: View {
                     .listRowSeparator(.hidden)
                     .id("top")
                 if search.isEmpty {
-                    Button { showAdd = true } label: { ContactEntryRow(title: "新的朋友", symbol: "person.fill.badge.plus", color: 0xFA9D3B) }
-                        .buttonStyle(.plain)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                    entry("仅聊天的朋友", "person.bubble.fill", 0xFA9D3B)
-                    entry("群聊", "person.2.fill", 0x07C160)
-                    entry("标签", "tag.fill", 0x1485EE)
-                    entry("公众号", "book.fill", 0x1485EE)
-                    entry("服务号", "rhombus.fill", 0x10AEFF)
-                    entry("企业微信联系人", "bubble.left.and.bubble.right", 0x2782D7)
+                    entry("新的朋友", "person.fill.badge.plus", 0xFA9D3B) { NewFriendsView() }
+                    entry("仅聊天的朋友", "person.bubble.fill", 0xFA9D3B) { ChatOnlyFriendsView() }
+                    entry("群聊", "person.2.fill", 0x07C160) { GroupListView() }
+                    entry("标签", "tag.fill", 0x1485EE) { TagsView() }
+                    entry("公众号", "book.fill", 0x1485EE) { OfficialAccountsView(isService: false) }
+                    entry("服务号", "rhombus.fill", 0x10AEFF) { OfficialAccountsView(isService: true) }
+                    entry("企业微信联系人", "bubble.left.and.bubble.right", 0x2782D7) {
+                        UnavailableFeatureView(title: "企业微信联系人", symbol: "building.2",
+                                               message: "本地演示没有接入企业微信账号，暂无企业联系人。")
+                    }
                 }
                 ForEach(sections, id: \.letter) { section in
                     Text(section.letter)
@@ -137,8 +142,9 @@ struct ContactsView: View {
 struct ContactDetailView: View {
     @Bindable var contact: Contact
     @Environment(\.modelContext) private var context
-    @Environment(\.dismiss) private var dismiss
     @State private var openChat: Conversation?
+    @State private var callRequest: CallRequest?
+    @State private var showCallChoice = false
     @State private var showEdit = false
     @State private var showMore = false
     @State private var confirmDelete = false
@@ -149,17 +155,25 @@ struct ContactDetailView: View {
             VStack(spacing: 8) {
                 header
                 WeChatGroup {
-                    Button { showEdit = true } label: { WeChatRow(title: "备注和标签", plain: true) }
-                        .buttonStyle(.plain)
+                    NavigationLink { ContactRemarkView(contact: contact) } label: {
+                        WeChatRow(title: "备注和标签", detail: contact.tags.joined(separator: "，"), plain: true)
+                    }
+                    .buttonStyle(.plain)
                     WeChatSeparator(leading: 16)
-                    Button { feature = "朋友权限" } label: { WeChatRow(title: "朋友权限", plain: true) }
-                        .buttonStyle(.plain)
+                    NavigationLink { FriendPermissionView(contact: contact) } label: {
+                        WeChatRow(title: "朋友权限", detail: contact.chatOnly ? "仅聊天" : nil, plain: true)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("contact.permission")
                 }
                 WeChatGroup {
-                    Button { feature = "朋友圈" } label: { WeChatRow(title: "朋友圈", plain: true) }
-                        .buttonStyle(.plain)
+                    NavigationLink { MomentsView(authorID: contact.id, title: contact.name) } label: {
+                        WeChatRow(title: "朋友圈", plain: true)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("contact.moments")
                     WeChatSeparator(leading: 16)
-                    Button { feature = "更多信息" } label: { WeChatRow(title: "更多信息", plain: true) }
+                    NavigationLink { moreInfo } label: { WeChatRow(title: "更多信息", plain: true) }
                         .buttonStyle(.plain)
                 }
                 WeChatGroup {
@@ -171,7 +185,7 @@ struct ContactDetailView: View {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("contact.sendMessage")
                     WeChatSeparator(leading: 0)
-                    Button { feature = "音视频通话" } label: { actionLabel("音视频通话", "video") }
+                    Button { showCallChoice = true } label: { actionLabel("音视频通话", "video") }
                         .buttonStyle(.plain)
                 }
             }
@@ -181,6 +195,19 @@ struct ContactDetailView: View {
         .navigationTitle("")
         .weChatNavigation()
         .navigationDestination(item: $openChat) { ChatView(conversation: $0) }
+        .confirmationDialog("", isPresented: $showCallChoice) {
+            Button("视频通话") { callRequest = CallRequest(video: true) }
+            Button("语音通话") { callRequest = CallRequest(video: false) }
+        }
+        .fullScreenCover(item: $callRequest) { request in
+            CallView(peerName: contact.name, peerAvatar: contact.avatarData, video: request.video) { duration in
+                let conversation = context.conversation(with: contact)
+                let text = duration.map { "通话时长 " + LiveBroadcastView.format($0) } ?? "已取消"
+                let message = context.addMessage(to: conversation, kind: .call, text: text, fromMe: true)
+                message.isVideoCall = request.video
+                try? context.save()
+            }
+        }
         .toolbar {
             // 新版微信：资料页右上角新增“编辑”按钮，直达备注
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -198,8 +225,9 @@ struct ContactDetailView: View {
         }
         .confirmationDialog("将联系人“\(contact.name)”删除，同时删除与该联系人的聊天记录", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("删除联系人", role: .destructive) {
-                dismiss()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                let contact = contact
+                NotificationCenter.default.post(name: .popToRoot, object: nil)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                     context.delete(contact)
                     try? context.save()
                 }
@@ -208,6 +236,18 @@ struct ContactDetailView: View {
         .alert(feature ?? "", isPresented: Binding(get: { feature != nil }, set: { if !$0 { feature = nil } })) {
             Button("知道了", role: .cancel) { }
         } message: { Text("此入口暂未接入。") }
+    }
+
+    private var moreInfo: some View {
+        List {
+            LabeledContent("微信号", value: contact.handle)
+            LabeledContent("标签", value: contact.tags.isEmpty ? "无" : contact.tags.joined(separator: "，"))
+            LabeledContent("来源", value: "本地添加")
+            LabeledContent("添加时间", value: ChatTime.chatLabel(contact.createdAt))
+            LabeledContent("共同群聊", value: "\(contact.groups.count) 个")
+        }
+        .navigationTitle("更多信息")
+        .weChatNavigation()
     }
 
     private var header: some View {

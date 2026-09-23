@@ -17,6 +17,8 @@ struct ChatView: View {
     @AppStorage("lastPasteChangeCount") private var lastPasteChangeCount = -1
     @Query(filter: #Predicate<Contact> { $0.isMe == true }) private var meList: [Contact]
     @Query private var allConversations: [Conversation]
+    @Query private var contacts: [Contact]
+    @AppStorage("chatBackgroundVersion") private var backgroundVersion = 0
 
     @State private var draft = ""
     @State private var sendAsMe = true
@@ -36,6 +38,15 @@ struct ChatView: View {
     @State private var confirmDeleteSelection = false
     @State private var toast: String?
     @State private var showLocation = false
+    @StateObject private var recorder = VoiceRecorder()
+    @State private var voiceCancel = false
+    @State private var micDenied = false
+    @State private var showCardPicker = false
+    @State private var showCallChoice = false
+    @State private var callRequest: CallRequest?
+    @State private var openedCard: Contact?
+    /// 群聊编辑模式：由哪位成员发送（nil 为自己）
+    @State private var groupSender: UUID?
     @FocusState private var inputFocused: Bool
 
     var body: some View {
@@ -47,7 +58,7 @@ struct ChatView: View {
                 if showPasteHint && editMode { pasteHintBar }
                 if let quote = quotedMessage {
                     HStack {
-                        Text("\(quote.fromMe ? "我" : conversation.title)：\(quote.preview)")
+                        Text("\(senderName(of: quote))：\(quote.preview)")
                             .font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(2)
                         Spacer()
                         Button { quotedMessage = nil } label: { Image(systemName: "xmark") }
@@ -58,11 +69,19 @@ struct ChatView: View {
                 InputBar(draft: $draft, panel: $panel, sendAsMe: $sendAsMe,
                      inputFocused: $inputFocused, editMode: editMode,
                      onSend: send, onImages: sendImages, onSimulate: { showSimulate = true },
-                     onLocation: { inputFocused = false; showLocation = true })
+                     onLocation: { inputFocused = false; showLocation = true },
+                     onCard: { inputFocused = false; showCardPicker = true },
+                     onCall: { inputFocused = false; showCallChoice = true },
+                     onSticker: { sendImages([$0]) },
+                     onVoiceStart: startVoice,
+                     onVoiceCancelChange: { voiceCancel = $0 },
+                     onVoiceEnd: finishVoice,
+                     groupMembers: conversation.isGroup ? conversation.members : [],
+                     groupSender: conversation.isGroup ? $groupSender : nil)
             }
         }
-        .background(Color.chatBackground.ignoresSafeArea())
-        .navigationTitle(isSelecting ? "已选择 \(selectedIDs.count) 条" : peerTyping ? "对方正在输入..." : conversation.title)
+        .background(chatBackground.ignoresSafeArea())
+        .navigationTitle(isSelecting ? "已选择 \(selectedIDs.count) 条" : peerTyping ? "对方正在输入..." : conversation.displayTitle)
         .weChatNavigation()
         .toolbar(.hidden, for: .tabBar)
         .navigationBarBackButtonHidden(true)
@@ -130,6 +149,16 @@ struct ChatView: View {
         }
     }
 
+    /// 设置 → 聊天 → 聊天背景
+    @ViewBuilder private var chatBackground: some View {
+        let _ = backgroundVersion
+        if let data = try? Data(contentsOf: LocalFiles.chatBackground), let image = UIImage(data: data) {
+            Color.chatBackground.overlay(Image(uiImage: image).resizable().scaledToFill()).clipped()
+        } else {
+            Color.chatBackground
+        }
+    }
+
     /// 返回按钮上显示的其他会话未读数（不含免打扰）
     private var otherUnread: Int {
         allConversations.filter { $0.id != conversation.id && !$0.muted }.reduce(0) { $0 + $1.unread }
@@ -159,7 +188,9 @@ struct ChatView: View {
                             MessageRow(
                             message: message,
                             me: meList.first,
-                            peer: conversation.peer,
+                            peer: sender(of: message),
+                            senderName: conversation.isGroup && !message.fromMe ? senderName(of: message) : nil,
+                            cardContact: message.cardContactID.flatMap { id in contacts.first { $0.id == id } },
                             editMode: editMode,
                             onEdit: { editingMessage = message },
                             onCopy: { copy(message) },
@@ -170,7 +201,13 @@ struct ChatView: View {
                             onForward: { forwardMessages = [message]; showForward = true },
                             onQuote: { quotedMessage = message; panel = .none; inputFocused = true },
                             onFavorite: { message.isFavorite.toggle(); try? context.save(); showToast(message.isFavorite ? "已收藏" : "已取消收藏") },
-                            onSelect: { inputFocused = false; panel = .none; isSelecting = true; selectedIDs = [message.id] }
+                            onSelect: { inputFocused = false; panel = .none; isSelecting = true; selectedIDs = [message.id] },
+                            onTapCard: { openedCard = $0 },
+                            onAddSticker: {
+                                context.insert(Sticker(data: message.imageData))
+                                try? context.save()
+                                showToast("已添加到表情")
+                            }
                         )
                             .allowsHitTesting(!isSelecting)
                         }
@@ -190,6 +227,23 @@ struct ChatView: View {
             .overlay(alignment: .top) {
                 Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 0.5)
             }
+            .overlay {
+                if recorder.isRecording { VoiceRecordingHUD(level: recorder.level, willCancel: voiceCancel) }
+            }
+            .sheet(isPresented: $showCardPicker) { CardPickerSheet { sendCard($0) } }
+            .confirmationDialog("", isPresented: $showCallChoice) {
+                Button("视频通话") { callRequest = CallRequest(video: true) }
+                Button("语音通话") { callRequest = CallRequest(video: false) }
+            }
+            .fullScreenCover(item: $callRequest) { request in
+                CallView(peerName: conversation.title, peerAvatar: conversation.peer?.avatarData, video: request.video) { duration in
+                    recordCall(video: request.video, duration: duration)
+                }
+            }
+            .navigationDestination(item: $openedCard) { ContactDetailView(contact: $0) }
+            .alert("无法录音", isPresented: $micDenied) {
+                Button("知道了", role: .cancel) {}
+            } message: { Text("请在系统设置中允许访问麦克风。") }
             .onAppear { scrollToBottom(proxy, messages) }
             .scrollDismissesKeyboard(.interactively)
             .simultaneousGesture(TapGesture().onEnded {
@@ -276,27 +330,84 @@ struct ChatView: View {
     private func send() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        let message = context.addMessage(to: conversation, text: text, fromMe: editMode ? sendAsMe : true)
+        let message = outgoing(context.addMessage(to: conversation, text: text, fromMe: outgoingFromMe))
         message.quotedText = quotedMessage?.preview
-        message.quotedSender = quotedMessage.map { $0.fromMe ? "我" : conversation.title }
+        message.quotedSender = quotedMessage.map { senderName(of: $0) }
         quotedMessage = nil
         try? context.save()
         draft = ""
     }
 
     private func sendImages(_ images: [Data]) {
-        let fromMe = editMode ? sendAsMe : true
         for (i, data) in images.enumerated() {
-            context.addMessage(to: conversation, kind: .image, imageData: data, fromMe: fromMe,
-                               at: Date().addingTimeInterval(Double(i) * 0.01))
+            outgoing(context.addMessage(to: conversation, kind: .image, imageData: data, fromMe: outgoingFromMe,
+                                        at: Date().addingTimeInterval(Double(i) * 0.01)))
         }
     }
 
     private func sendLocation(name: String, address: String, coordinate: CLLocationCoordinate2D?) {
-        let message = context.addMessage(to: conversation, kind: .location, text: name, fromMe: editMode ? sendAsMe : true)
+        let message = outgoing(context.addMessage(to: conversation, kind: .location, text: name, fromMe: outgoingFromMe))
         message.locationAddress = address
         message.latitude = coordinate?.latitude
         message.longitude = coordinate?.longitude
+        try? context.save()
+    }
+
+    // MARK: - 发送方、语音、名片、通话
+
+    private var outgoingFromMe: Bool {
+        guard editMode else { return true }
+        return conversation.isGroup ? groupSender == nil : sendAsMe
+    }
+
+    /// 群聊编辑模式下以成员身份发送时，写入发送者
+    @discardableResult
+    private func outgoing(_ message: Message) -> Message {
+        if conversation.isGroup, !message.fromMe,
+           let member = conversation.members.first(where: { $0.id == groupSender }) {
+            message.senderID = member.id
+            message.senderName = member.name
+        }
+        return message
+    }
+
+    private func sender(of message: Message) -> Contact? {
+        guard conversation.isGroup else { return conversation.peer }
+        return conversation.members.first { $0.id == message.senderID }
+            ?? contacts.first { $0.id == message.senderID }
+    }
+
+    private func senderName(of message: Message) -> String {
+        if message.fromMe { return "我" }
+        guard conversation.isGroup else { return conversation.title }
+        return sender(of: message)?.name ?? message.senderName ?? "群成员"
+    }
+
+    private func startVoice() {
+        voiceCancel = false
+        Task {
+            if !(await recorder.start()) { micDenied = true }
+        }
+    }
+
+    private func finishVoice() {
+        guard recorder.isRecording, let (data, duration) = recorder.stop(cancel: voiceCancel) else { return }
+        let message = outgoing(context.addMessage(to: conversation, kind: .voice, fromMe: outgoingFromMe))
+        message.audioData = data
+        message.duration = duration
+        try? context.save()
+    }
+
+    private func sendCard(_ contact: Contact) {
+        let message = outgoing(context.addMessage(to: conversation, kind: .card, text: contact.name, fromMe: outgoingFromMe))
+        message.cardContactID = contact.id
+        try? context.save()
+    }
+
+    private func recordCall(video: Bool, duration: TimeInterval?) {
+        let text = duration.map { "通话时长 " + LiveBroadcastView.format($0) } ?? "已取消"
+        let message = context.addMessage(to: conversation, kind: .call, text: text, fromMe: true)
+        message.isVideoCall = video
         try? context.save()
     }
 
@@ -308,7 +419,7 @@ struct ChatView: View {
     private func recall(_ message: Message) {
         message.kind = .system
         message.imageData = nil
-        message.text = message.fromMe ? "你撤回了一条消息" : "\u{201C}\(conversation.title)\u{201D} 撤回了一条消息"
+        message.text = message.fromMe ? "你撤回了一条消息" : "\u{201C}\(senderName(of: message))\u{201D} 撤回了一条消息"
     }
 
     private func delete(_ message: Message) {
@@ -328,11 +439,18 @@ struct ChatView: View {
             peerTyping = true
             try? await Task.sleep(for: .seconds(delay))
             peerTyping = false
-            context.addMessage(to: conversation, text: text, fromMe: false)
+            let reply = context.addMessage(to: conversation, text: text, fromMe: false)
+            if conversation.isGroup {
+                let member = conversation.members.first { $0.id == groupSender } ?? conversation.members.randomElement()
+                reply.senderID = member?.id
+                reply.senderName = member?.name
+            }
             if !ChatPresence.visible.contains(conversation.id) {
                 conversation.unread += 1
             }
             try? context.save()
+            LocalNotifier.notifyIfNeeded(title: conversation.title,
+                                         body: conversation.isGroup ? "\(reply.senderName ?? "")：\(text)" : text)
         }
     }
 
@@ -358,6 +476,10 @@ struct ChatView: View {
             copy.quotedText = message.quotedText
             copy.quotedSender = message.quotedSender
             copy.locationAddress = message.locationAddress
+            copy.audioData = message.audioData
+            copy.duration = message.duration
+            copy.cardContactID = message.cardContactID
+            copy.isVideoCall = message.isVideoCall
             copy.latitude = message.latitude
             copy.longitude = message.longitude
         }

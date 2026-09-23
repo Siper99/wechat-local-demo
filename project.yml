@@ -10,8 +10,8 @@ settings:
     SWIFT_VERSION: "5.0"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""          # 在这里填你的 Team ID，或在 Xcode 的 Signing 里选
-    MARKETING_VERSION: "1.3.0"
-    CURRENT_PROJECT_VERSION: "5"
+    MARKETING_VERSION: "1.4.0"
+    CURRENT_PROJECT_VERSION: "6"
     TARGETED_DEVICE_FAMILY: "1"
     QINGLIAO_BUNDLE_ID: com.example.qingliao
     APP_GROUP_IDENTIFIER: group.$(QINGLIAO_BUNDLE_ID)
@@ -32,6 +32,8 @@ targets:
         INFOPLIST_KEY_QingLiaoAppGroup: $(APP_GROUP_IDENTIFIER)
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSCameraUsageDescription: 拍摄照片并添加到本地聊天
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: 录制语音消息，保存在本机聊天中
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: 在“附近的人”地图上显示你的位置，不会上传
         INFOPLIST_KEY_UIDesignRequiresCompatibility: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
     entitlements:

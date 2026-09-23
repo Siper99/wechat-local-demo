@@ -7,25 +7,25 @@ struct DiscoverView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
-                WeChatGroup { entry("朋友圈", "camera.aperture", .orange) }
+                WeChatGroup { link("朋友圈", "camera.aperture", .orange) { MomentsView() } }
                 WeChatGroup {
-                    entry("视频号", "infinity", Color(UIColor(hex: 0xFA9D3B)))
+                    link("视频号", "infinity", .orange) { ChannelsView() }
                     WeChatSeparator()
-                    entry("直播", "circle.circle", Color(UIColor(hex: 0xFA5151)))
+                    link("直播", "circle.circle", .red) { LiveView() }
                 }
                 WeChatGroup {
-                    entry("扫一扫", "qrcode.viewfinder", .blue)
+                    link("扫一扫", "qrcode.viewfinder", .blue) { ScanView() }
                     WeChatSeparator()
-                    entry("听一听", "music.note", Color(UIColor(hex: 0xFA5151)))
+                    link("听一听", "music.note", Color(UIColor(hex: 0xFA5151))) { ListenView() }
                 }
                 WeChatGroup {
-                    entry("看一看", "sun.max", .orange)
+                    link("看一看", "sun.max", .orange) { TopStoriesView() }
                     WeChatSeparator()
-                    entry("搜一搜", "magnifyingglass", .red)
+                    link("搜一搜", "magnifyingglass", .red) { SearchHubView() }
                 }
-                WeChatGroup { entry("附近的人", "location", .blue) }
-                WeChatGroup { entry("游戏", "gamecontroller", .purple) }
-                WeChatGroup { entry("小程序", "app.connected.to.app.below.fill", .purple) }
+                WeChatGroup { link("附近的人", "location", .blue) { NearbyView() } }
+                WeChatGroup { link("游戏", "gamecontroller", .purple) { GamesView() } }
+                WeChatGroup { link("小程序", "app.connected.to.app.below.fill", .purple) { MiniProgramsView() } }
             }
             .padding(.top, 8)
             .padding(.bottom, 20)
@@ -38,9 +38,11 @@ struct DiscoverView: View {
         } message: { Text("当前版本专注本地聊天与联系人，此入口暂未接入服务。") }
     }
 
-    private func entry(_ title: String, _ icon: String, _ color: Color) -> some View {
-        Button { feature = title } label: { WeChatRow(title: title, icon: icon, color: color) }
+    private func link<Destination: View>(_ title: String, _ icon: String, _ color: Color,
+                                         @ViewBuilder destination: () -> Destination) -> some View {
+        NavigationLink { destination() } label: { WeChatRow(title: title, icon: icon, color: color) }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("discover.\(title)")
     }
 }
 
@@ -56,22 +58,20 @@ struct MeView: View {
         ScrollView {
             VStack(spacing: 8) {
                 profile
-                WeChatGroup { entry("服务", "creditcard", .brand) }
+                WeChatGroup { link("服务", "creditcard", .brand, id: "me.services") { ServicesView() } }
                 WeChatGroup {
-                    NavigationLink { FavoritesView() } label: {
-                        WeChatRow(title: "收藏", icon: "cube", color: .orange)
-                    }.buttonStyle(.plain).accessibilityIdentifier("me.favorites")
+                    link("收藏", "cube", .orange, id: "me.favorites") { FavoritesView() }
                     WeChatSeparator()
-                    entry("朋友圈", "photo", .blue)
+                    link("朋友圈", "photo", .blue, id: "me.moments") { MomentsView(authorID: me?.id, title: "我的朋友圈") }
                     WeChatSeparator()
-                    entry("作品", "square.on.square", Color(UIColor(hex: 0x1485EE)))
+                    link("作品", "square.on.square", Color(UIColor(hex: 0x1485EE)), id: "me.works") { WorksView() }
                     WeChatSeparator()
-                    entry("小店与卡包", "handbag", Color(UIColor(hex: 0xFA5151)))
+                    link("小店与卡包", "handbag", Color(UIColor(hex: 0xFA5151)), id: "me.wallet") { ShopWalletView() }
                     WeChatSeparator()
-                    entry("表情", "face.smiling", .orange)
+                    link("表情", "face.smiling", .orange, id: "me.stickers") { StickersView() }
                 }
                 WeChatGroup {
-                    NavigationLink { SimulationSettingsView() } label: {
+                    NavigationLink { WeChatSettingsView() } label: {
                         WeChatRow(title: "设置", icon: "gearshape", color: .blue)
                     }
                     .buttonStyle(.plain)
@@ -107,9 +107,7 @@ struct MeView: View {
                                 .font(.system(size: 22, weight: .semibold))
                                 .foregroundStyle(.primary)
                                 .lineLimit(1)
-                            Spacer(minLength: 8)
-                            Image("me_qrcode").resizable().scaledToFit().frame(width: 18, height: 18)
-                                .foregroundStyle(.secondary)
+                            Spacer(minLength: 38)
                         }
                         HStack {
                             Text("微信号：\(me?.handle ?? "wxid_me")")
@@ -126,6 +124,16 @@ struct MeView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("me.profile")
+                .overlay(alignment: .topTrailing) {
+                    NavigationLink { MyQRCodeView() } label: {
+                        Image("me_qrcode").resizable().scaledToFit().frame(width: 18, height: 18)
+                            .padding(6)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("我的二维码")
+                    .accessibilityIdentifier("me.qrcode")
+                }
                 Button { showStatus = true } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "plus").font(.system(size: 12))
@@ -147,9 +155,11 @@ struct MeView: View {
         .background(Color(.systemBackground))
     }
 
-    private func entry(_ title: String, _ icon: String, _ color: Color) -> some View {
-        Button { feature = title } label: { WeChatRow(title: title, icon: icon, color: color) }
+    private func link<Destination: View>(_ title: String, _ icon: String, _ color: Color, id: String,
+                                         @ViewBuilder destination: () -> Destination) -> some View {
+        NavigationLink { destination() } label: { WeChatRow(title: title, icon: icon, color: color) }
             .buttonStyle(.plain)
+            .accessibilityIdentifier(id)
     }
 }
 

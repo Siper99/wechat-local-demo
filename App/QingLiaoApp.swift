@@ -17,6 +17,11 @@ struct QingLiaoApp: App {
     }
 }
 
+extension Notification.Name {
+    /// 删除当前所在的会话/联系人前先回到首页，避免界面引用已删除的数据
+    static let popToRoot = Notification.Name("popToRoot")
+}
+
 struct RootView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
@@ -24,6 +29,7 @@ struct RootView: View {
     @State private var toast: String?
     @State private var selectedTab: MainTab = .chats
     @State private var path = NavigationPath()
+    @AppStorage("appearance") private var appearance = 0
 
     private var unreadTotal: Int {
         conversations.filter { !$0.muted }.reduce(0) { $0 + $1.unread }
@@ -47,7 +53,9 @@ struct RootView: View {
             .navigationDestination(for: Conversation.self) { ChatView(conversation: $0) }
             .navigationDestination(for: Contact.self) { ContactDetailView(contact: $0) }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .popToRoot)) { _ in path = NavigationPath() }
         .tint(.primary)
+        .preferredColorScheme(appearance == 1 ? .light : appearance == 2 ? .dark : nil)
         .task {
             SeedData.seedIfNeeded(context)
             ingestInbox()

@@ -16,7 +16,12 @@ enum AppGroup {
 }
 
 enum SharedStore {
-    static let schema = Schema([Contact.self, Conversation.self, Message.self])
+    static let schema = Schema([
+        Contact.self, Conversation.self, Message.self,
+        Moment.self, MomentPhoto.self, MomentComment.self,
+        Note.self, Sticker.self, WalletCard.self, OfficialAccount.self, Article.self,
+        ChannelVideo.self, AudioTrack.self, MiniApp.self, FriendRequest.self,
+    ])
 
     /// App 和分享扩展共用同一个数据库文件（放在 App Group 容器里）
     static func makeContainer() -> ModelContainer {

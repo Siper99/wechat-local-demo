@@ -122,6 +122,8 @@ struct WeChatRow: View {
         HStack(spacing: 16) {
             if plain {
                 EmptyView()
+            } else if WeChatIcon.custom.contains(title) {
+                WeChatIcon.view(title).frame(width: 24, height: 26)
             } else if let resource {
                 Image(resource).resizable().scaledToFit().frame(width: 24, height: 26)
             } else if let icon {

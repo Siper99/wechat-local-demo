@@ -4,6 +4,9 @@ struct MessageRow: View {
     let message: Message
     let me: Contact?
     let peer: Contact?
+    /// 群聊中显示在气泡上方的对方昵称
+    var senderName: String? = nil
+    var cardContact: Contact? = nil
     let editMode: Bool
     var onEdit: () -> Void
     var onCopy: () -> Void
@@ -15,6 +18,8 @@ struct MessageRow: View {
     var onQuote: () -> Void
     var onFavorite: () -> Void
     var onSelect: () -> Void
+    var onTapCard: (Contact) -> Void = { _ in }
+    var onAddSticker: () -> Void = {}
     @State private var showFullText = false
 
     var body: some View {
@@ -38,8 +43,16 @@ struct MessageRow: View {
                     bubble
                     AvatarView(contact: me, size: 40)
                 } else {
-                    AvatarView(contact: peer, size: 40)
-                    bubble
+                    AvatarView(name: peer?.name ?? senderName ?? "?", data: peer?.avatarData, size: 40)
+                    if let senderName {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(senderName).font(.system(size: 12)).foregroundStyle(.secondary)
+                                .padding(.leading, BubbleShape.arrowWidth + 2)
+                            bubble
+                        }
+                    } else {
+                        bubble
+                    }
                     Spacer(minLength: 56)
                 }
             }
@@ -61,6 +74,20 @@ struct MessageRow: View {
                         onTapImage(image)
                     }
                 }
+                .contextMenu { menu }
+        case .voice:
+            VoiceBubble(message: message)
+                .onTapGesture { if editMode { onEdit() } else { VoicePlayer.shared.toggle(message) } }
+                .contextMenu { menu }
+        case .card:
+            CardBubble(message: message, contact: cardContact)
+                .onTapGesture {
+                    if editMode { onEdit() } else if let cardContact { onTapCard(cardContact) }
+                }
+                .contextMenu { menu }
+        case .call:
+            CallBubble(message: message)
+                .onTapGesture { if editMode { onEdit() } }
                 .contextMenu { menu }
         case .location:
             LocationBubble(message: message)
@@ -127,6 +154,9 @@ struct MessageRow: View {
     @ViewBuilder private var menu: some View {
         if message.kind == .text {
             Button("复制", systemImage: "doc.on.doc", action: onCopy)
+        }
+        if message.kind == .image {
+            Button("添加到表情", systemImage: "face.smiling", action: onAddSticker)
         }
         Button("转发", systemImage: "arrowshape.turn.up.right", action: onForward)
         Button(message.isFavorite ? "取消收藏" : "收藏", systemImage: "cube", action: onFavorite)

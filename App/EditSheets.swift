@@ -57,21 +57,54 @@ struct ConversationSettingsView: View {
     @Bindable var conversation: Conversation
     @Environment(\.modelContext) private var context
     @AppStorage("editMode") private var editMode = false
+    @Environment(\.dismiss) private var dismiss
     @State private var confirmClear = false
     @State private var showProfile = false
+    @State private var showAddMembers = false
+    @State private var confirmLeave = false
+    @State private var newGroup: Conversation?
+
+    private var people: [Contact] {
+        conversation.isGroup ? conversation.members.sorted { $0.createdAt < $1.createdAt } : [conversation.peer].compactMap { $0 }
+    }
 
     var body: some View {
         List {
             Section {
-                HStack(alignment: .top, spacing: 24) {
-                    Button { showProfile = true } label: {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), alignment: .leading, spacing: 14) {
+                    ForEach(people) { person in
+                        NavigationLink { ContactDetailView(contact: person) } label: {
+                            VStack(spacing: 6) {
+                                AvatarView(contact: person, size: 54)
+                                Text(person.name).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Button { showAddMembers = true } label: {
                         VStack(spacing: 6) {
-                            AvatarView(contact: conversation.peer, size: 54)
-                            Text(conversation.title).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
-                        }.frame(width: 64)
-                    }.buttonStyle(.plain)
-                    Spacer()
-                }.padding(.vertical, 14)
+                            RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [4]))
+                                .frame(width: 54, height: 54)
+                                .overlay(Image(systemName: "plus").font(.system(size: 22, weight: .light)).foregroundStyle(.secondary))
+                            Text(" ").font(.system(size: 12))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(conversation.isGroup ? "添加群成员" : "发起群聊")
+                    .accessibilityIdentifier("chatInfo.addMember")
+                }
+                .padding(.vertical, 10)
+            }
+            if conversation.isGroup {
+                Section {
+                    HStack {
+                        Text("群聊名称")
+                        TextField("未命名", text: $conversation.groupName)
+                            .multilineTextAlignment(.trailing)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("chatInfo.groupName")
+                    }
+                }
             }
             Section {
                 NavigationLink { ChatHistoryView(conversation: conversation) } label: { Text("查找聊天记录") }
@@ -90,12 +123,44 @@ struct ConversationSettingsView: View {
                 Button("清空聊天记录") { confirmClear = true }
                     .foregroundStyle(.primary)
             }
+            if conversation.isGroup {
+                Section {
+                    Button("退出群聊", role: .destructive) { confirmLeave = true }
+                        .frame(maxWidth: .infinity)
+                }
+            }
         }
         .listStyle(.grouped)
         .navigationTitle("聊天信息")
         .weChatNavigation()
         .sheet(isPresented: $showProfile) {
             if let peer = conversation.peer { ContactEditView(contact: peer) }
+        }
+        .sheet(isPresented: $showAddMembers) {
+            ContactMultiPicker(title: conversation.isGroup ? "添加群成员" : "发起群聊",
+                               excluded: Set(people.map(\.id))) { picked in
+                guard !picked.isEmpty else { return }
+                if conversation.isGroup {
+                    conversation.members.append(contentsOf: picked)
+                    context.addMessage(to: conversation, kind: .system,
+                                       text: "你邀请\(picked.map(\.name).joined(separator: "、"))加入了群聊", fromMe: true)
+                    try? context.save()
+                } else {
+                    let group = context.createGroup(with: people + picked)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { newGroup = group }
+                }
+            }
+        }
+        .navigationDestination(item: $newGroup) { ChatView(conversation: $0) }
+        .confirmationDialog("退出后不会再收到此群聊消息", isPresented: $confirmLeave, titleVisibility: .visible) {
+            Button("退出", role: .destructive) {
+                let conversation = conversation
+                NotificationCenter.default.post(name: .popToRoot, object: nil)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    context.delete(conversation)
+                    try? context.save()
+                }
+            }
         }
         .confirmationDialog("确定清空聊天记录？", isPresented: $confirmClear, titleVisibility: .visible) {
             Button("清空", role: .destructive) {

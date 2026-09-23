@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import PhotosUI
 
 enum InputPanel {
@@ -15,11 +16,24 @@ struct InputBar: View {
     var onImages: ([Data]) -> Void
     var onSimulate: () -> Void
     var onLocation: () -> Void = {}
+    var onCard: () -> Void = {}
+    var onCall: () -> Void = {}
+    var onSticker: (Data) -> Void = { _ in }
+    /// 按住说话：开始 / 上滑取消状态变化 / 松开
+    var onVoiceStart: () -> Void = {}
+    var onVoiceCancelChange: (Bool) -> Void = { _ in }
+    var onVoiceEnd: () -> Void = {}
+    /// 群聊编辑模式下选择由哪位成员发送（nil 为自己）
+    var groupMembers: [Contact] = []
+    var groupSender: Binding<UUID?>? = nil
 
+    @Query(sort: \Sticker.createdAt, order: .reverse) private var stickers: [Sticker]
     @State private var showPhotos = false
     @State private var voiceInput = false
     @State private var featureNotice: String?
     @State private var showCamera = false
+    @State private var pressing = false
+    @State private var emojiTab = 0
 
     private static let emojis = "😀😁😂🤣😊😍😘😎🤔😅😭😡👍👎👏🙏💪🤝🎉❤️💔🌹☕️🍺🎂🔥✨😴🤗😳😱🙄😏😬🤐😷🤒😇🥳🥺😤👌✌️🙈🌙☀️🍉🐶🐱".map(String.init)
 
@@ -35,11 +49,26 @@ struct InputBar: View {
                 }.accessibilityLabel(voiceInput ? "切换键盘" : "切换语音")
                 if voiceInput {
                     // 8.0.78 灰度样式：无描边、更圆润扁平，右侧独立的“语音转文字”图标
-                    Text("按住 说话")
+                    Text(pressing ? "松开 发送" : "按住 说话")
                         .font(.system(size: 16, weight: .semibold))
                         .frame(maxWidth: .infinity).frame(height: 40)
-                        .background(Color.inputField, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .onLongPressGesture { featureNotice = "语音消息" }
+                        .background(pressing ? Color.dynamic(0xC7C7C7, 0x3A3A3A) : Color.inputField,
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    if !pressing {
+                                        pressing = true
+                                        onVoiceStart()
+                                    }
+                                    onVoiceCancelChange(value.translation.height < -60)
+                                }
+                                .onEnded { _ in
+                                    pressing = false
+                                    onVoiceEnd()
+                                }
+                        )
+                        .accessibilityIdentifier("chat.holdToTalk")
                         .overlay(alignment: .trailing) {
                             Button { featureNotice = "语音转文字" } label: {
                                 Image(systemName: "character.bubble")
@@ -92,7 +121,7 @@ struct InputBar: View {
         }
         .alert(featureNotice ?? "", isPresented: Binding(get: { featureNotice != nil }, set: { if !$0 { featureNotice = nil } })) {
             Button("知道了", role: .cancel) { }
-        } message: { Text("此功能尚未接入；当前支持文字、图片和本地消息编辑。") }
+        } message: { Text(featureNotice == "红包" || featureNotice == "转账" ? "本地演示不提供红包、转账等资金功能。" : "此功能尚未接入。") }
         .sheet(isPresented: $showPhotos) {
             PhotoSendSheet { images in
                 onImages(images)
@@ -101,21 +130,35 @@ struct InputBar: View {
         }
     }
 
-    private var senderSwitch: some View {
-        HStack(spacing: 8) {
-            Text("发送身份")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-            Spacer()
-            Picker("发送方", selection: $sendAsMe) {
-                Text("对方").tag(false)
-                Text("我").tag(true)
+    @ViewBuilder private var senderSwitch: some View {
+        if let groupSender, !groupMembers.isEmpty {
+            HStack(spacing: 8) {
+                Text("发送身份").font(.system(size: 12)).foregroundStyle(.secondary)
+                Spacer()
+                Picker("发送方", selection: groupSender) {
+                    Text("我").tag(UUID?.none)
+                    ForEach(groupMembers) { Text($0.name).tag(Optional($0.id)) }
+                }
+                .pickerStyle(.menu)
             }
-            .pickerStyle(.segmented)
-            .frame(width: 120)
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+        } else {
+            HStack(spacing: 8) {
+                Text("发送身份")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Picker("发送方", selection: $sendAsMe) {
+                    Text("对方").tag(false)
+                    Text("我").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 120)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
     }
 
     private func barIcon(_ name: String, asset: String? = nil, action: @escaping () -> Void) -> some View {
@@ -145,6 +188,31 @@ struct InputBar: View {
     // MARK: - 表情面板
 
     private var emojiPanel: some View {
+        VStack(spacing: 0) {
+            Group {
+                if emojiTab == 0 { emojiGrid } else { stickerGrid }
+            }
+            .frame(height: 230)
+            HStack(spacing: 0) {
+                tabButton(0, Text("😀").font(.system(size: 22)))
+                tabButton(1, Image(systemName: "heart").font(.system(size: 20)))
+                    .accessibilityLabel("收藏的表情")
+                Spacer()
+            }
+            .frame(height: 40)
+            .background(Color.inputField)
+        }
+    }
+
+    private func tabButton(_ index: Int, _ label: some View) -> some View {
+        Button { emojiTab = index } label: {
+            label.frame(width: 56, height: 40)
+                .background(emojiTab == index ? Color.inputBar : Color.clear)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var emojiGrid: some View {
         ScrollView {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 8), spacing: 14) {
                 ForEach(Self.emojis, id: \.self) { emoji in
@@ -154,7 +222,6 @@ struct InputBar: View {
             .padding(14)
             .padding(.bottom, 44)
         }
-        .frame(height: 230)
         .overlay(alignment: .bottomTrailing) {
             HStack(spacing: 8) {
                 Button {
@@ -176,6 +243,26 @@ struct InputBar: View {
         }
     }
 
+    private var stickerGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4), spacing: 12) {
+                NavigationLink { StickersView() } label: {
+                    RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [4]))
+                        .aspectRatio(1, contentMode: .fit)
+                        .overlay(Image(systemName: "plus").font(.system(size: 22, weight: .light)).foregroundStyle(.secondary))
+                }
+                .accessibilityLabel("管理表情")
+                ForEach(stickers) { sticker in
+                    Button { if let data = sticker.data { onSticker(data) } } label: {
+                        StickerImage(sticker: sticker).aspectRatio(1, contentMode: .fit)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(14)
+        }
+    }
+
     // MARK: - ＋ 面板
 
     private var morePanel: some View {
@@ -186,11 +273,11 @@ struct InputBar: View {
                 if UIImagePickerController.isSourceTypeAvailable(.camera) { showCamera = true }
                 else { featureNotice = "相机不可用" }
             } label: { tile("camera", "拍摄") }.buttonStyle(.plain)
-            Button { featureNotice = "视频通话" } label: { tile("video", "视频通话") }.buttonStyle(.plain)
+            Button { panel = .none; onCall() } label: { tile("video", "视频通话") }.buttonStyle(.plain)
             Button { panel = .none; onLocation() } label: { tile("location", "位置") }.buttonStyle(.plain)
             Button { featureNotice = "红包" } label: { tile("gift", "红包") }.buttonStyle(.plain)
             Button { featureNotice = "转账" } label: { tile("arrow.left.arrow.right", "转账") }.buttonStyle(.plain)
-            Button { featureNotice = "名片" } label: { tile("person.crop.rectangle", "名片") }.buttonStyle(.plain)
+            Button { panel = .none; onCard() } label: { tile("person.crop.rectangle", "名片") }.buttonStyle(.plain)
             VStack(spacing: 6) {
                 PasteButton(payloadType: String.self) { strings in
                     Task { @MainActor in

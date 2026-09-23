@@ -12,6 +12,7 @@ struct ConversationListView: View {
     @State private var featureNotice: String?
     @AppStorage("desktopLogin") private var desktopLogin = "Windows"
     @State private var swipedID: UUID?
+    @State private var showScan = false
 
     private var unreadTotal: Int {
         conversations.filter { !$0.muted }.reduce(0) { $0 + $1.unread }
@@ -85,7 +86,7 @@ struct ConversationListView: View {
                     Menu {
                         Button("发起群聊", systemImage: "bubble.left.and.bubble.right") { showNewChat = true }
                         Button("添加朋友", systemImage: "person.badge.plus") { showAddContact = true }
-                        Button("扫一扫", systemImage: "qrcode.viewfinder") { featureNotice = "扫一扫" }
+                        Button("扫一扫", systemImage: "qrcode.viewfinder") { showScan = true }
                         Button("收付款", systemImage: "qrcode") { featureNotice = "收付款" }
                     } label: {
                         Image(systemName: "plus.circle").font(.system(size: 22, weight: .regular))
@@ -93,10 +94,21 @@ struct ConversationListView: View {
                     .accessibilityLabel("添加")
                 }
             }
-            .sheet(item: $editing) { ConversationSettingsView(conversation: $0) }
-            .sheet(isPresented: $showNewChat) {
-                NewChatView { onOpen($0) }
+            .sheet(item: $editing) { conversation in
+                NavigationStack { ConversationSettingsView(conversation: conversation) }
             }
+            .sheet(isPresented: $showNewChat) {
+                ContactMultiPicker(title: "发起群聊") { members in
+                    if members.count == 1, let only = members.first {
+                        let conversation = context.conversation(with: only)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { onOpen(conversation) }
+                    } else if members.count > 1 {
+                        let group = context.createGroup(with: members)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { onOpen(group) }
+                    }
+                }
+            }
+            .navigationDestination(isPresented: $showScan) { ScanView() }
             .sheet(isPresented: $showAddContact) { ContactEditView() }
             .alert(featureNotice ?? "", isPresented: Binding(get: { featureNotice != nil }, set: { if !$0 { featureNotice = nil } })) {
                 Button("知道了", role: .cancel) { }
@@ -151,7 +163,7 @@ struct ConversationRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            AvatarView(contact: conversation.peer, size: 48)
+            ConversationAvatar(conversation: conversation, size: 48)
                 .overlay(alignment: .topTrailing) { badge.offset(x: 6, y: -6) }
 
             VStack(alignment: .leading, spacing: 5) {
@@ -188,7 +200,13 @@ struct ConversationRow: View {
 
     private var previewText: String {
         if !conversation.draft.isEmpty { return conversation.draft }
-        let preview = conversation.lastMessage?.preview ?? ""
+        let last = conversation.lastMessage
+        var preview = last?.preview ?? ""
+        // 群聊预览带发送者昵称
+        if conversation.isGroup, let last, !last.fromMe, last.kind != .system,
+           let name = conversation.members.first(where: { $0.id == last.senderID })?.name ?? last.senderName {
+            preview = "\(name)：" + preview
+        }
         if conversation.muted && conversation.unread > 0 {
             return "[\(conversation.unread)条] " + preview
         }
