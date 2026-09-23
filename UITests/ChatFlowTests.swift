@@ -218,13 +218,21 @@ final class ChatFlowTests: XCTestCase {
         app.buttons["picker.chat.林小雨"].tap()
         XCTAssertTrue(app.buttons["发送"].waitForExistence(timeout: 3))
         app.buttons["发送"].tap()
+        waitUntilGone(app.navigationBars["选择聊天"])
+        XCTAssertTrue(app.buttons["contactSettings.recommend"].waitForExistence(timeout: 3))
         back()
+        XCTAssertTrue(app.buttons["contact.sendMessage"].waitForExistence(timeout: 3))
         app.buttons["contact.sendMessage"].tap()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "chat.input").firstMatch.waitForExistence(timeout: 5))
     }
 
     private func back() {
         app.navigationBars.buttons.firstMatch.tap()
+    }
+
+    private func waitUntilGone(_ element: XCUIElement, timeout: TimeInterval = 5) {
+        let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: element)
+        wait(for: [gone], timeout: timeout)
     }
 
     func testMeEntriesOpen() {

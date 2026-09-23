@@ -263,7 +263,11 @@ struct ChatView: View {
                 inputFocused = false
                 withAnimation(.easeOut(duration: 0.2)) { panel = .none }
             })
-            .onChange(of: messages.count) { scrollToBottom(proxy, messages) }
+            .onChange(of: messages.count) {
+                // 键盘或面板动画期间布局还在变化，稍后再滚一次，保证新消息不被输入栏挡住
+                scrollToBottom(proxy, messages)
+                scrollToBottom(proxy, messages, delay: 0.35)
+            }
             .onChange(of: jumpTarget) { _, target in
                 guard let target else { return }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {

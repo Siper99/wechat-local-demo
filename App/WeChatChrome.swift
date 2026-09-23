@@ -180,7 +180,14 @@ extension View {
 
 enum WeChatAppearance {
     static func apply() {
-        let background = UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0x111111) : UIColor(hex: 0xEDEDED) }
+        let appearance = make(background: UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0x111111) : UIColor(hex: 0xEDEDED) })
+        let bar = UINavigationBar.appearance()
+        bar.standardAppearance = appearance
+        bar.scrollEdgeAppearance = appearance
+        bar.compactAppearance = appearance
+    }
+
+    static func make(background: UIColor) -> UINavigationBarAppearance {
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = background
@@ -190,10 +197,56 @@ enum WeChatAppearance {
         let hidden: [NSAttributedString.Key: Any] = [.foregroundColor: UIColor.clear]
         appearance.backButtonAppearance.normal.titleTextAttributes = hidden
         appearance.backButtonAppearance.highlighted.titleTextAttributes = hidden
-        let bar = UINavigationBar.appearance()
-        bar.standardAppearance = appearance
-        bar.scrollEdgeAppearance = appearance
-        bar.compactAppearance = appearance
+        return appearance
+    }
+}
+
+extension View {
+    /// 单页导航栏底色（如好友资料页为白色）。直接设置该页 navigationItem 的外观，
+    /// 不用 toolbarBackground，否则会丢掉“返回按钮不显示上一页标题”的设置。
+    func navigationBarColor(_ color: UIColor) -> some View {
+        background(NavigationBarColorSetter(color: color).frame(width: 0, height: 0))
+    }
+}
+
+private struct NavigationBarColorSetter: UIViewControllerRepresentable {
+    let color: UIColor
+
+    func makeUIViewController(context: Context) -> Controller { Controller(color: color) }
+    func updateUIViewController(_ controller: Controller, context: Context) {}
+
+    final class Controller: UIViewController {
+        let color: UIColor
+
+        init(color: UIColor) {
+            self.color = color
+            super.init(nibName: nil, bundle: nil)
+        }
+
+        required init?(coder: NSCoder) { nil }
+
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            apply()
+        }
+
+        override func didMove(toParent parent: UIViewController?) {
+            super.didMove(toParent: parent)
+            apply()
+        }
+
+        /// 找到直接挂在导航栈上的那一层控制器
+        private func apply() {
+            var current: UIViewController? = self
+            while let controller = current, let parent = controller.parent, !(parent is UINavigationController) {
+                current = parent
+            }
+            guard let page = current, page.parent is UINavigationController else { return }
+            let appearance = WeChatAppearance.make(background: color)
+            page.navigationItem.standardAppearance = appearance
+            page.navigationItem.scrollEdgeAppearance = appearance
+            page.navigationItem.compactAppearance = appearance
+        }
     }
 }
 

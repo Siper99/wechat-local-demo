@@ -71,8 +71,7 @@ struct ContactDetailView: View {
         .background(Color.chatBackground)
         .navigationTitle("")
         .weChatNavigation()
-        .toolbarBackground(Color.cellBackground, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .navigationBarColor(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0x191919) : .white })
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if !contact.isMe {
