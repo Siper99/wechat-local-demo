@@ -382,6 +382,7 @@ struct SearchHubView: View {
                     .focused($focused)
                     .submitLabel(.search)
                     .accessibilityIdentifier("searchHub.field")
+                    .testingKeyboard()
                 if !query.isEmpty {
                     Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) }
                 }

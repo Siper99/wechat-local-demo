@@ -207,6 +207,7 @@ struct MomentsView: View {
                 .submitLabel(.send)
                 .onSubmit(sendComment)
                 .accessibilityIdentifier("moments.commentField")
+                    .testingKeyboard()
             Button("发送", action: sendComment)
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(.white)
@@ -469,6 +470,7 @@ struct MomentComposeView: View {
                     TextField("这一刻的想法...", text: $text, axis: .vertical)
                         .lineLimit(4...12)
                         .accessibilityIdentifier("moments.composeText")
+                    .testingKeyboard()
                     photoPicker
                 }
                 Section {

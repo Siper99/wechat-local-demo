@@ -109,6 +109,7 @@ struct LocationComposeSheet: View {
                 Section {
                     TextField("地点名称", text: $name)
                         .accessibilityIdentifier("location.name")
+                    .testingKeyboard()
                     TextField("详细地址", text: $address, axis: .vertical)
                         .lineLimit(1...3)
                         .accessibilityIdentifier("location.address")

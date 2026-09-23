@@ -67,6 +67,7 @@ struct WeChatSearchBar: View {
                     .autocorrectionDisabled()
                     .accessibilityLabel("搜索")
                     .accessibilityIdentifier("search.field")
+                    .testingKeyboard()
                 if !text.isEmpty {
                     Button { text = "" } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)

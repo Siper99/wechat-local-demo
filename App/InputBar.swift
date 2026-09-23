@@ -85,6 +85,7 @@ struct InputBar: View {
                     .focused(inputFocused)
                     .submitLabel(.send)
                     .accessibilityIdentifier("chat.input")
+                    .testingKeyboard()
                     .accessibilityLabel("消息输入框")
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)

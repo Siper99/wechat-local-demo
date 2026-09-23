@@ -7,6 +7,17 @@ extension Color {
     init(hex: Int) { self.init(UIColor(hex: UInt32(hex))) }
 }
 
+enum UITesting {
+    static let enabled = ProcessInfo.processInfo.arguments.contains("-ui-testing")
+}
+
+extension View {
+    /// UI 测试时使用英文键盘，避免拼音输入法吞掉 typeText 的英文
+    func testingKeyboard() -> some View {
+        keyboardType(UITesting.enabled ? .asciiCapable : .default)
+    }
+}
+
 // MARK: - 群聊九宫格头像
 
 struct GroupAvatarView: View {

@@ -90,14 +90,15 @@ enum SeedData {
 
         try? context.save()
         UserDefaults.standard.set(true, forKey: fileHelperKey)
-        ensureAccounts(context)
+        ensureAccounts(context, force: true)
     }
 
     private static let accountsKey = "seededOfficialAccounts"
 
     /// 公众号、服务号和文章（虚构的本地示例内容）；升级用户也会补充
-    private static func ensureAccounts(_ context: ModelContext) {
-        guard !UserDefaults.standard.bool(forKey: accountsKey) else { return }
+    /// force：全新数据库时总是写入（标记存在 UserDefaults，可能比数据库活得久）
+    private static func ensureAccounts(_ context: ModelContext, force: Bool = false) {
+        guard force || !UserDefaults.standard.bool(forKey: accountsKey) else { return }
         let now = Date()
         func hoursAgo(_ h: Double) -> Date { now.addingTimeInterval(-h * 3600) }
 

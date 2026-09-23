@@ -315,6 +315,7 @@ struct NoteEditorView: View {
             .navigationTitle("笔记")
             .weChatNavigation()
             .accessibilityIdentifier("note.editor")
+                    .testingKeyboard()
             .onAppear { if note.text.isEmpty { focused = true } }
             .onChange(of: note.text) { _, _ in note.updatedAt = .now }
             .onDisappear {
@@ -448,6 +449,7 @@ private struct AddCardSheet: View {
                 Picker("类型", selection: $kind) { ForEach(kinds, id: \.self) { Text($0) } }
                     .pickerStyle(.segmented)
                 TextField("名称，如：咖啡店会员卡", text: $title).accessibilityIdentifier("wallet.title")
+                    .testingKeyboard()
                 TextField("备注，如：满 50 减 10、有效期", text: $note)
                 HStack {
                     ForEach(colors, id: \.self) { value in
