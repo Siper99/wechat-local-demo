@@ -35,7 +35,7 @@ struct WeChatTabBar: View {
                             }
                         Text(tab.title).font(.system(size: 10))
                     }
-                    .foregroundStyle(selection == tab ? Color.brand : Color(UIColor(hex: 0x7C8085)))
+                    .foregroundStyle(selection == tab ? Color.brand : Color.tabInactive)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
                     .contentShape(Rectangle())
@@ -95,7 +95,7 @@ struct WeChatSearchBar: View {
                     .foregroundStyle(Color.linkBlue)
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(Color.chatBackground)
     }
@@ -113,20 +113,20 @@ struct WeChatRow: View {
 
     private var resource: String? {
         if plain { return nil }
-        return asset ?? ["朋友圈": "discover_moment", "扫一扫": "discover_qrcode", "看一看": "discover_see",
-                  "搜一搜": "discover_search", "附近的人": "discover_nearby",
-                  "游戏": "discover_game", "小程序": "discover_miniprogram", "服务": "me_pay",
-                  "收藏": "me_favorite", "表情": "me_emoji", "设置": "me_setting"][title]
+        return asset ?? ["朋友圈": "wc_moments", "视频号": "wc_channels", "直播": "wc_live",
+                  "扫一扫": "wc_scan", "听一听": "wc_listen", "看一看": "wc_look", "搜一搜": "wc_search",
+                  "附近的人": "wc_nearby", "游戏": "wc_game", "小程序": "discover_miniprogram",
+                  "服务": "me_pay", "收藏": "wc_favorites", "作品": "wc_works", "小店与卡包": "wc_shop",
+                  "表情": "wc_emoji", "设置": "me_setting"][title]
     }
 
     var body: some View {
         HStack(spacing: 16) {
             if plain {
                 EmptyView()
-            } else if WeChatIcon.custom.contains(title) {
-                WeChatIcon.view(title).frame(width: 24, height: 26)
             } else if let resource {
-                Image(resource).resizable().scaledToFit().frame(width: 24, height: 26)
+                Image(resource).resizable().scaledToFit().frame(width: 24, height: 24)
+                    .frame(width: 24, height: 26)
             } else if let icon {
                 Image(systemName: icon)
                     .font(.system(size: 23, weight: .regular))
@@ -165,6 +165,9 @@ struct WeChatSeparator: View {
 
 extension Color {
     static let linkBlue = Color(UIColor(hex: 0x576B95))
+    /// 底部标签未选中：浅色 #181818，深色 90% 白
+    static let tabInactive = Color(UIColor { $0.userInterfaceStyle == .dark
+        ? UIColor(white: 1, alpha: 0.9) : UIColor(red: 0x18 / 255, green: 0x18 / 255, blue: 0x18 / 255, alpha: 1) })
 }
 
 extension View {

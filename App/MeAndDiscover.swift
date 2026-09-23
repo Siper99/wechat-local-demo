@@ -126,7 +126,7 @@ struct MeView: View {
                 .accessibilityIdentifier("me.profile")
                 .overlay(alignment: .topTrailing) {
                     NavigationLink { MyQRCodeView() } label: {
-                        Image("me_qrcode").resizable().scaledToFit().frame(width: 18, height: 18)
+                        Image("wc_qrcode").resizable().scaledToFit().frame(width: 20, height: 20)
                             .padding(6)
                             .contentShape(Rectangle())
                     }

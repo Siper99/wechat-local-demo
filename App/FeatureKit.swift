@@ -210,56 +210,6 @@ struct ContactMultiPicker: View {
     }
 }
 
-// MARK: - 新版图标（按实机截图绘制）
-
-enum WeChatIcon {
-    /// 有自绘图标的入口
-    static let custom: Set<String> = ["看一看", "游戏", "附近的人", "收藏", "视频号", "直播"]
-
-    @ViewBuilder
-    static func view(_ title: String) -> some View {
-        switch title {
-        case "看一看":
-            ZStack {
-                Triangle().stroke(Color(hex: 0xF6C543), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
-                Triangle().rotation(.degrees(180))
-                    .stroke(Color(hex: 0xF6C543), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
-            }
-            .frame(width: 22, height: 22)
-        case "游戏":
-            ZStack {
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .stroke(AngularGradient(colors: [Color(hex: 0xFA5151), Color(hex: 0xFFC300), Color(hex: 0x07C160),
-                                                     Color(hex: 0x1485EE), Color(hex: 0xFA5151)], center: .center),
-                            lineWidth: 2.2)
-                    .frame(width: 17, height: 17)
-                    .rotationEffect(.degrees(45))
-                Circle().stroke(Color(hex: 0x1485EE), lineWidth: 1.8).frame(width: 7, height: 7)
-            }
-            .frame(width: 24, height: 24)
-        case "附近的人":
-            Image(systemName: "person.wave.2")
-                .font(.system(size: 20, weight: .light))
-                .foregroundStyle(Color(hex: 0x1485EE))
-        case "收藏":
-            Image(systemName: "cube")
-                .font(.system(size: 21, weight: .light))
-                .foregroundStyle(LinearGradient(colors: [Color(hex: 0xFFC300), Color(hex: 0xFA5151), Color(hex: 0x1485EE)],
-                                                startPoint: .topLeading, endPoint: .bottomTrailing))
-        case "视频号":
-            Image(systemName: "infinity")
-                .font(.system(size: 21, weight: .medium))
-                .foregroundStyle(Color(hex: 0xFA9D3B))
-        case "直播":
-            Image(systemName: "circle.circle")
-                .font(.system(size: 22, weight: .light))
-                .foregroundStyle(Color(hex: 0xFA5151))
-        default:
-            EmptyView()
-        }
-    }
-}
-
 struct Triangle: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()

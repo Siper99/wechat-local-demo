@@ -298,17 +298,17 @@ struct NewChatView: View {
     }
 }
 
-// MARK: - 首页右上角 ＋ 菜单（深色浮层，规格参考 WeChatSwift：宽 160、行高 56、16pt 白字）
+// MARK: - 首页右上角 ＋ 菜单（深色浮层，按实机截图测量：宽 134、行高 53、17pt 白字）
 
 struct PlusMenu: View {
     enum Action { case groupChat, addFriend, scan, pay }
     var onSelect: (Action) -> Void
 
     private let items: [(Action, String, String)] = [
-        (.groupChat, "发起群聊", "bubble.left.and.bubble.right"),
-        (.addFriend, "添加朋友", "person.badge.plus"),
-        (.scan, "扫一扫", "qrcode.viewfinder"),
-        (.pay, "收付款", "yensign.square"),
+        (.groupChat, "发起群聊", "menu_groupchat"),
+        (.addFriend, "添加朋友", "menu_addfriend"),
+        (.scan, "扫一扫", "menu_scan"),
+        (.pay, "收付款", "menu_pay"),
     ]
 
     private static let background = Color.dynamic(0x4C4C4C, 0x404040)
@@ -318,34 +318,35 @@ struct PlusMenu: View {
             // 指向 ＋ 按钮的小三角
             Triangle()
                 .fill(Self.background)
-                .frame(width: 14, height: 7)
+                .frame(width: 12, height: 6)
                 .padding(.trailing, 14)
             VStack(spacing: 0) {
                 ForEach(items.indices, id: \.self) { index in
                     let item = items[index]
                     Button { onSelect(item.0) } label: {
-                        HStack(spacing: 14) {
-                            Image(systemName: item.2)
-                                .font(.system(size: 18))
-                                .frame(width: 24)
-                            Text(item.1).font(.system(size: 16))
+                        HStack(spacing: 10) {
+                            Image(item.2)
+                                .renderingMode(.template)
+                                .resizable()
+                                .frame(width: 21, height: 21)
+                            Text(item.1).font(.system(size: 17))
                             Spacer(minLength: 0)
                         }
                         .foregroundStyle(.white)
-                        .padding(.leading, 18)
-                        .frame(width: 160, height: 56)
+                        .padding(.leading, 17)
+                        .frame(width: 134, height: 53)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(PlusMenuButtonStyle())
                     .accessibilityIdentifier("plus.\(item.1)")
                     .overlay(alignment: .bottom) {
                         if index < items.count - 1 {
-                            Rectangle().fill(.white.opacity(0.12)).frame(height: 0.5).padding(.leading, 50)
+                            Rectangle().fill(.white.opacity(0.12)).frame(height: 0.5).padding(.leading, 48)
                         }
                     }
                 }
             }
-            .background(Self.background, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .background(Self.background, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
         }
         .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
     }

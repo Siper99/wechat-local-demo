@@ -33,11 +33,11 @@ struct ContactsView: View {
         }
     }
 
-    private func entry<Destination: View>(_ title: String, _ symbol: String, _ color: UInt32,
+    private func entry<Destination: View>(_ title: String, _ asset: String,
                                           @ViewBuilder destination: () -> Destination) -> some View {
         ZStack {
             NavigationLink { destination() } label: { EmptyView() }.opacity(0)
-            ContactEntryRow(title: title, symbol: symbol, color: color)
+            ContactEntryRow(title: title, asset: asset)
         }
         .accessibilityIdentifier("contacts.entry.\(title)")
         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -51,13 +51,13 @@ struct ContactsView: View {
                     .listRowSeparator(.hidden)
                     .id("top")
                 if search.isEmpty {
-                    entry("新的朋友", "person.fill.badge.plus", 0xFA9D3B) { NewFriendsView() }
-                    entry("仅聊天的朋友", "person.bubble.fill", 0xFA9D3B) { ChatOnlyFriendsView() }
-                    entry("群聊", "person.2.fill", 0x07C160) { GroupListView() }
-                    entry("标签", "tag.fill", 0x1485EE) { TagsView() }
-                    entry("公众号", "book.fill", 0x1485EE) { OfficialAccountsView(isService: false) }
-                    entry("服务号", "rhombus.fill", 0x10AEFF) { OfficialAccountsView(isService: true) }
-                    entry("企业微信联系人", "bubble.left.and.bubble.right", 0x2782D7) {
+                    entry("新的朋友", "contact_newfriend") { NewFriendsView() }
+                    entry("仅聊天的朋友", "contact_chatonly") { ChatOnlyFriendsView() }
+                    entry("群聊", "contact_group") { GroupListView() }
+                    entry("标签", "contact_tag") { TagsView() }
+                    entry("公众号", "contact_official") { OfficialAccountsView(isService: false) }
+                    entry("服务号", "contact_service") { OfficialAccountsView(isService: true) }
+                    entry("企业微信联系人", "contact_wecom") {
                         UnavailableFeatureView(title: "企业微信联系人", symbol: "building.2",
                                                message: "本地演示没有接入企业微信账号，暂无企业联系人。")
                     }
@@ -128,7 +128,10 @@ struct ContactsView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showAdd = true } label: { Image(systemName: "person.badge.plus") }
+                    Button { showAdd = true } label: {
+                        Image("nav_addfriend").resizable().frame(width: 24, height: 24)
+                    }
+                    .accessibilityLabel("添加朋友")
                 }
             }
             .sheet(isPresented: $showAdd) { ContactEditView() }
@@ -288,16 +291,14 @@ struct ContactDetailView: View {
 /// 通讯录顶部功能入口：40pt 彩色圆角图标 + 标题
 struct ContactEntryRow: View {
     let title: String
-    let symbol: String
-    let color: UInt32
+    let asset: String
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: symbol)
-                .font(.system(size: 19, weight: .medium))
-                .foregroundStyle(.white)
+            Image(asset)
+                .resizable()
                 .frame(width: 40, height: 40)
-                .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color(UIColor(hex: color))))
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
             Text(title).font(.system(size: 17)).foregroundStyle(.primary)
             Spacer(minLength: 0)
         }
